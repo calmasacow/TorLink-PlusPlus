@@ -16,7 +16,7 @@ import { Downloads } from "../src/ui/components/Downloads";
 import { footerHints } from "../src/ui/keymap";
 import { sourcesByGroup } from "../src/sources/registry";
 import { cleanText, formatBytes, formatRelative } from "../src/util/format";
-import { ansiToSvg } from "./ansi-to-svg";
+import { ansiToSvg, type AnsiToSvgOptions } from "./ansi-to-svg";
 import type { Config } from "../src/config/config";
 import type { DownloadQueue } from "../src/download/queue";
 import type { QueueItem } from "../src/download/types";
@@ -97,7 +97,12 @@ function makeStore(
   };
 }
 
-function save(name: string, store: Store, node: React.ReactNode): void {
+function save(
+  name: string,
+  store: Store,
+  node: React.ReactNode,
+  extra: Partial<AnsiToSvgOptions> = {},
+): void {
   const { lastFrame, unmount } = render(
     <StoreContext.Provider value={store}>{node}</StoreContext.Provider>,
   );
@@ -106,7 +111,10 @@ function save(name: string, store: Store, node: React.ReactNode): void {
   if (!/\x1b\[/.test(frame)) {
     throw new Error(`${name}: frame has no ANSI colors (FORCE_COLOR didn't take)`);
   }
-  writeFileSync(join(OUT_DIR, `${name}.svg`), ansiToSvg(frame, { cols: COLS, title: "torlink" }));
+  writeFileSync(
+    join(OUT_DIR, `${name}.svg`),
+    ansiToSvg(frame, { cols: COLS, title: "torlink", ...extra }),
+  );
   console.log(`preview/${name}.svg`);
 }
 
@@ -126,7 +134,7 @@ save(
       <Text dimColor>{CATEGORIES}</Text>
     </Box>
     <Box marginTop={1} width={62}>
-      <SearchBar width={62} value="" editing placeholder="Search, or paste a magnet…" onSubmit={() => {}} />
+      <SearchBar width={62} value="" editing placeholder="Search or paste a magnet link…" onSubmit={() => {}} />
     </Box>
     <Box marginTop={1}>
       <Text>
@@ -159,7 +167,7 @@ save(
     <Box height={14} marginTop={1}>
       <Sidebar />
       <Box flexGrow={1} flexDirection="column">
-        <SearchBar width={CONTENT_WIDTH} value="" editing={false} placeholder="Search, or paste a magnet…" onSubmit={() => {}} />
+        <SearchBar width={CONTENT_WIDTH} value="" editing={false} placeholder="Search or paste a magnet link…" onSubmit={() => {}} />
         <Box marginTop={1}>
           <Panel title="latest" width={CONTENT_WIDTH} focused count={`(${browseResults.length})`} height={9}>
             <Box><Text dimColor>newest across all sources</Text></Box>
@@ -237,4 +245,5 @@ save(
     </Box>
     <Footer hints={footerHints("content", "downloads")} />
   </Box>,
+  { shimmer: true },
 );

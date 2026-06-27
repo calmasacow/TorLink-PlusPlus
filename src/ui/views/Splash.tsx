@@ -50,7 +50,7 @@ export function Splash() {
           width={barWidth}
           value=""
           editing
-          placeholder="Search, or paste a magnet…"
+          placeholder="Search or paste a magnet link…"
           onSubmit={submitQuery}
         />
       </Box>

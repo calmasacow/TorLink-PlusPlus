@@ -1,8 +1,20 @@
+import { lerpHex } from "../src/ui/theme";
+import {
+  SHEEN_PEAK,
+  SHEEN_TICK_MS,
+  sheenCenter,
+  sheenIntensity,
+  sheenLoopTicks,
+  sheenPeriod,
+} from "../src/ui/sheen";
+
 export interface AnsiToSvgOptions {
   cols: number;
   bg?: string;
   title?: string;
   maxWidth?: number;
+  /** Animate a sweeping highlight over progress-bar fills (rows with a ░ track). */
+  shimmer?: boolean;
 }
 
 interface Style {
@@ -26,7 +38,7 @@ const LINE_H = 22;
 const PAD = 32;
 const HEADER_H = 36;
 const RADIUS = 14;
-const BG = "#0c0b14";
+const BG = "#0a0810";
 const FG_DEFAULT = "#ddd8ea";
 const DIM_OPACITY = 0.55;
 const FONT_STACK =
@@ -144,7 +156,7 @@ function escapeXml(s: string): string {
 const fmt = (n: number): string => String(Math.round(n * 100) / 100);
 
 export function ansiToSvg(frame: string, opts: AnsiToSvgOptions): string {
-  const { cols, bg = BG, title, maxWidth } = opts;
+  const { cols, bg = BG, title, maxWidth, shimmer = false } = opts;
   const lines = frame.replace(/\r/g, "").split("\n");
   const isBlank = (l: string): boolean =>
     l.replace(/\x1b\[[0-9;]*m/g, "").trim() === "";
@@ -162,7 +174,7 @@ export function ansiToSvg(frame: string, opts: AnsiToSvgOptions): string {
   );
   out.push(`  <rect width="100%" height="100%" rx="${RADIUS}" fill="${bg}"/>`);
   out.push(
-    `  <rect x="0.5" y="0.5" width="${fmt(width - 1)}" height="${fmt(height - 1)}" rx="${RADIUS}" fill="none" stroke="#272430" stroke-width="1"/>`,
+    `  <rect x="0.5" y="0.5" width="${fmt(width - 1)}" height="${fmt(height - 1)}" rx="${RADIUS}" fill="none" stroke="#2d2b31" stroke-width="1"/>`,
   );
   if (title) {
     out.push(
@@ -172,6 +184,9 @@ export function ansiToSvg(frame: string, opts: AnsiToSvgOptions): string {
   out.push(
     `  <g font-family='${FONT_STACK}' font-size="${FONT_SIZE}" fill="${FG_DEFAULT}">`,
   );
+
+  const barRuns: { row: number; col: number; n: number; fg: string }[] = [];
+  const trackLen = new Map<number, number>();
 
   const state = { style: freshStyle() };
   lines.forEach((line, row) => {
@@ -195,6 +210,11 @@ export function ansiToSvg(frame: string, opts: AnsiToSvgOptions): string {
       const x = PAD + col * CHAR_W;
       const w = n * CHAR_W;
       const fg = st.fg ?? FG_DEFAULT;
+      if (shimmer) {
+        if (/^█+$/.test(text)) barRuns.push({ row, col, n, fg });
+        const dim = (text.match(/░/g) ?? []).length;
+        if (dim > 0) trackLen.set(row, (trackLen.get(row) ?? 0) + dim);
+      }
       if (/^[│┃]+$/.test(text)) {
         const barW = text[0] === "┃" ? 2.8 : 1.4;
         for (let k = 0; k < n; k++) {
@@ -251,6 +271,57 @@ export function ansiToSvg(frame: string, opts: AnsiToSvgOptions): string {
   });
 
   out.push("  </g>");
+
+  if (shimmer && barRuns.length > 0) {
+    // Reproduce the live ProgressBar sheen 1:1: for each filled cell, animate
+    // its fill through the exact bell-tinted colors, snapping frame-to-frame
+    // (calcMode="discrete") like the terminal repaint, so it stays pixelated.
+    const byRow = new Map<number, { col: number; n: number; fg: string }[]>();
+    for (const r of barRuns) {
+      if (!trackLen.has(r.row)) continue;
+      const arr = byRow.get(r.row) ?? [];
+      arr.push({ col: r.col, n: r.n, fg: r.fg });
+      byRow.set(r.row, arr);
+    }
+
+    for (const [row, parts] of byRow) {
+      parts.sort((a, b) => a.col - b.col);
+      // Merge contiguous █ runs into one region, expanded to per-cell colors.
+      const regions: { col: number; colors: string[] }[] = [];
+      for (const p of parts) {
+        const last = regions[regions.length - 1];
+        const cells = Array.from({ length: p.n }, () => p.fg);
+        if (last && last.col + last.colors.length === p.col) last.colors.push(...cells);
+        else regions.push({ col: p.col, colors: cells });
+      }
+
+      const yTop = HEADER_H + PAD + row * LINE_H;
+      for (const region of regions) {
+        const len = region.colors.length;
+        const fullCells = len + (trackLen.get(row) ?? 0);
+        const period = sheenPeriod(fullCells);
+        const frames = sheenLoopTicks(period);
+        const dur = (frames * SHEEN_TICK_MS) / 1000;
+        for (let i = 0; i < len; i++) {
+          const base = region.colors[i]!;
+          const values: string[] = [];
+          for (let t = 0; t < frames; t++) {
+            const intensity = sheenIntensity(i, sheenCenter(t, period));
+            values.push(intensity > 0 ? lerpHex(base, SHEEN_PEAK, intensity) : base);
+          }
+          const x = PAD + (region.col + i) * CHAR_W;
+          out.push(
+            `  <rect x="${fmt(x)}" y="${fmt(yTop)}" width="${fmt(CHAR_W)}" height="${LINE_H}" fill="${base}">`,
+          );
+          out.push(
+            `    <animate attributeName="fill" calcMode="discrete" dur="${fmt(dur)}s" values="${values.join(";")}" repeatCount="indefinite"/>`,
+          );
+          out.push(`  </rect>`);
+        }
+      }
+    }
+  }
+
   out.push("</svg>");
   return out.join("\n");
 }

@@ -1,13 +1,9 @@
 import { useEffect, useState } from "react";
 import { Text } from "ink";
 import { COLOR, RULE, lerpHex } from "../theme";
+import { SHEEN_PEAK, SHEEN_TICK_MS, sheenCenter, sheenIntensity, sheenPeriod } from "../sheen";
 
 const DEEP = "#7c5cd6";
-const SHEEN_PEAK = "#f4efff";
-const RADIUS = 3.5;
-const GAP = 8;
-const MAX_SHEEN = 0.9;
-const TICK_MS = 90;
 
 interface Run {
   color: string;
@@ -55,7 +51,7 @@ export function ProgressBar({
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!animate) return;
-    const timer = setInterval(() => setTick((v) => v + 1), TICK_MS);
+    const timer = setInterval(() => setTick((v) => v + 1), SHEEN_TICK_MS);
     timer.unref?.();
     return () => clearInterval(timer);
   }, [animate]);
@@ -76,15 +72,12 @@ export function ProgressBar({
     );
   }
 
-  const period = Math.ceil(width + RADIUS * 2) + GAP;
-  const center = (tick % period) - RADIUS;
+  const period = sheenPeriod(width);
+  const center = sheenCenter(tick, period);
   const cells = Array.from({ length: filled }, (_, i) => {
     let c = ramp(i / denom, DEEP, COLOR.accent, COLOR.bright);
-    const d = Math.abs(i - center);
-    if (d < RADIUS) {
-      const intensity = 0.5 * (1 + Math.cos((Math.PI * d) / RADIUS)) * MAX_SHEEN;
-      c = lerpHex(c, SHEEN_PEAK, intensity);
-    }
+    const intensity = sheenIntensity(i, center);
+    if (intensity > 0) c = lerpHex(c, SHEEN_PEAK, intensity);
     return c;
   });
 

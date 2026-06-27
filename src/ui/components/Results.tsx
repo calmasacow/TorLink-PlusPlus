@@ -14,7 +14,7 @@ import type { Source, TorrentResult } from "../../sources/types";
 
 type Mode = "list" | "search" | "detail";
 
-const PLACEHOLDER = "Search, or paste a magnet…";
+const PLACEHOLDER = "Search or paste a magnet link…";
 
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
