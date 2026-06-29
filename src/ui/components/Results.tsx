@@ -8,6 +8,7 @@ import { Rule } from "./Rule";
 import { useConcurrentSearch } from "../hooks/useConcurrentSearch";
 import { getSource, SOURCES } from "../../sources/registry";
 import { wrapStep, windowStart } from "../move";
+import { sortResults, nextSort, sortLabel, sortArrow, type Sort, type SortField } from "../sort";
 import { COLOR, GUTTER, ICON, SOURCE_STYLE } from "../theme";
 import { cleanText, formatBytes, formatRelative, truncate } from "../../util/format";
 import type { Source, TorrentResult } from "../../sources/types";
@@ -123,11 +124,14 @@ export function Results() {
 
   const search = useConcurrentSearch(query);
 
+  const [sort, setSort] = useState<Sort>("none");
   const results = useMemo(() => {
     const cat = CATEGORIES.find((c) => c.key === section);
-    if (!cat?.group) return search.results;
-    return search.results.filter((r) => getSource(r.source).group === cat.group);
-  }, [search.results, section]);
+    const base = cat?.group
+      ? search.results.filter((r) => getSource(r.source).group === cat.group)
+      : search.results;
+    return sortResults(base, sort);
+  }, [search.results, section, sort]);
 
   const focused = region === "content";
   const [mode, setMode] = useState<Mode>("list");
@@ -194,6 +198,8 @@ export function Results() {
       } else if (input === "y") {
         const r = results[clamped];
         if (r) copyResultMagnet(r);
+      } else if (input === "s") {
+        setSort((cur) => nextSort(cur));
       }
     },
     { isActive: focused && mode === "list" },
@@ -282,7 +288,18 @@ export function Results() {
     const head = browsing
       ? "newest across all sources"
       : `${results.length} result${results.length === 1 ? "" : "s"}`;
-    return <Text dimColor>{head + note}</Text>;
+    const sortNote = sort === "none" ? "" : `  ${ICON.dot} sort: ${sortLabel(sort)}`;
+    return <Text dimColor>{`${head}${note}${sortNote}`}</Text>;
+  };
+
+  const sortMark = (field: SortField, label: string): ReactNode => {
+    if (sort === "none" || sort.field !== field) return label;
+    return (
+      <>
+        <Text color={COLOR.accent} bold>{sortArrow(sort.dir)}</Text>
+        {label}
+      </>
+    );
   };
 
   const start = windowStart(clamped, results.length, listHeight);
@@ -326,10 +343,10 @@ export function Results() {
                     {showStats ? (
                       <>
                         <Box width={10} flexShrink={0} marginLeft={1} justifyContent="flex-end">
-                          <Text bold dimColor>Size</Text>
+                          <Text bold dimColor>{sortMark("size", "Size")}</Text>
                         </Box>
                         <Box width={9} flexShrink={0} marginLeft={1} justifyContent="flex-end">
-                          <Text bold dimColor>Seed:Lch</Text>
+                          <Text bold dimColor>{sortMark("seeders", "Seed:Lch")}</Text>
                         </Box>
                       </>
                     ) : (
@@ -338,7 +355,7 @@ export function Results() {
                       </Box>
                     )}
                     <Box width={4} flexShrink={0} marginLeft={1} justifyContent="flex-end">
-                      <Text bold dimColor>Src</Text>
+                      <Text bold dimColor>{sortMark("source", "Src")}</Text>
                     </Box>
                   </Box>
                 ) : null}

@@ -42,13 +42,6 @@ function dedupe(list: TorrentResult[]): TorrentResult[] {
   return [...byHash.values()];
 }
 
-function sortResults(list: TorrentResult[]): TorrentResult[] {
-  return list.sort((a, b) => {
-    if (b.seeders !== a.seeders) return b.seeders - a.seeders;
-    return (b.added ?? 0) - (a.added ?? 0);
-  });
-}
-
 function idleState(): ConcurrentSearchState {
   return {
     results: [],
@@ -105,7 +98,7 @@ export function useConcurrentSearch(query: string): ConcurrentSearchState {
           if (!alive) return;
           done += 1;
           setState({
-            results: sortResults(dedupe(collected.slice())),
+            results: dedupe(collected.slice()),
             perSource: { ...per },
             loading: done < SOURCES.length,
             done,
