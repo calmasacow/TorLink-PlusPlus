@@ -302,6 +302,14 @@ export function App({
         setRegion(region === "sidebar" ? "content" : "sidebar");
         return;
       }
+      if (key.rightArrow) {
+        if (region === "sidebar") setRegion("content");
+        return;
+      }
+      if (key.leftArrow) {
+        if (region === "content") setRegion("sidebar");
+        return;
+      }
       if (key.escape) {
         if (captureMode === "esc") return;
         if (region === "content") {

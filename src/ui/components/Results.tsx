@@ -100,6 +100,7 @@ export function Results() {
     submitQuery,
     section,
     region,
+    setRegion,
     setCaptureMode,
     startDownload,
     contentWidth,
@@ -155,9 +156,13 @@ export function Results() {
         setMode("search");
         return;
       }
+      if (key.upArrow) {
+        if (results.length > 0 && clamped > 0) setCursor(clamped - 1);
+        else setMode("search");
+        return;
+      }
       if (results.length === 0) return;
-      if (key.upArrow) setCursor(wrapStep(clamped, -1, results.length));
-      else if (key.downArrow) setCursor(wrapStep(clamped, 1, results.length));
+      if (key.downArrow) setCursor(wrapStep(clamped, 1, results.length));
       else if (key.pageUp) setCursor(Math.max(0, clamped - pageJump));
       else if (key.pageDown) setCursor(Math.min(results.length - 1, clamped + pageJump));
       else if (key.return) {
@@ -271,12 +276,14 @@ export function Results() {
         editing={mode === "search"}
         placeholder={PLACEHOLDER}
         onSubmit={onSubmit}
+        onExitDown={() => setMode("list")}
+        onExitLeft={() => setRegion("sidebar")}
       />
       <Box marginTop={1}>
         <Panel
           title={mode === "detail" ? "details" : browsing ? "latest" : "results"}
           width={contentWidth}
-          focused={focused}
+          focused={focused && mode !== "search"}
           count={mode === "detail" ? undefined : count}
           height={panelOuter}
         >

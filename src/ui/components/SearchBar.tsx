@@ -10,6 +10,8 @@ interface SearchBarProps {
   editing: boolean;
   onSubmit: (value: string) => void;
   onChange?: (value: string) => void;
+  onExitDown?: () => void;
+  onExitLeft?: () => void;
 }
 
 export function SearchBar({
@@ -19,6 +21,8 @@ export function SearchBar({
   editing,
   onSubmit,
   onChange,
+  onExitDown,
+  onExitLeft,
 }: SearchBarProps) {
   return (
     <Panel title="search" width={width} focused={editing} height={2}>
@@ -31,6 +35,8 @@ export function SearchBar({
               placeholder={placeholder}
               onSubmit={onSubmit}
               onChange={onChange}
+              onExitDown={onExitDown}
+              onExitLeft={onExitLeft}
             />
           ) : value ? (
             <Text wrap="truncate-end">{value}</Text>

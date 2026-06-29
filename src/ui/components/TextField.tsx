@@ -7,6 +7,8 @@ export interface TextFieldProps {
   placeholder?: string;
   onChange?: (value: string) => void;
   onSubmit?: (value: string) => void;
+  onExitDown?: () => void;
+  onExitLeft?: () => void;
 }
 
 interface Edit {
@@ -48,6 +50,8 @@ export function TextField({
   placeholder = "",
   onChange,
   onSubmit,
+  onExitDown,
+  onExitLeft,
 }: TextFieldProps) {
   const [value, setValue] = useState(defaultValue);
   const [cursor, setCursor] = useState(defaultValue.length);
@@ -60,8 +64,11 @@ export function TextField({
 
   useInput(
     (input, key) => {
-      if (key.upArrow || key.downArrow || key.tab || (key.ctrl && input === "c"))
+      if (key.downArrow) {
+        onExitDown?.();
         return;
+      }
+      if (key.upArrow || key.tab || (key.ctrl && input === "c")) return;
 
       if (key.return) {
         onSubmit?.(value);
@@ -91,7 +98,11 @@ export function TextField({
       }
 
       if (key.leftArrow) {
-        setCursor(Math.max(0, cursor - 1));
+        if (cursor === 0) {
+          onExitLeft?.();
+          return;
+        }
+        setCursor(cursor - 1);
         return;
       }
       if (key.rightArrow) {

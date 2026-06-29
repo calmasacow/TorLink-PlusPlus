@@ -14,7 +14,7 @@ export const HELP_GROUPS: HelpGroup[] = [
   {
     title: "Navigate",
     hints: [
-      { keys: "↑ ↓", label: "Move" },
+      { keys: "↑ ↓ ← →", label: "Navigate content and panes" },
       { keys: "↵", label: "Open" },
       { keys: "tab", label: "Switch pane" },
       { keys: "esc", label: "Back" },
@@ -48,6 +48,8 @@ export const HELP_GROUPS: HelpGroup[] = [
   },
 ];
 
+const NAVIGATE: Hint = { keys: "↑ ↓ ← →", label: "Navigate content and panes" };
+
 const ALWAYS: Hint = { keys: "?", label: "Keys" };
 
 const SWITCH: Hint = { keys: "tab", label: "Switch pane" };
@@ -60,7 +62,7 @@ export function footerHints(
 ): Hint[] {
   if (region === "sidebar") {
     return [
-      { keys: "↑↓", label: "Move" },
+      NAVIGATE,
       { keys: "↵", label: "Open" },
       SWITCH,
       ALWAYS,
@@ -81,6 +83,7 @@ export function footerHints(
     }
     if (downloadFocus === "recent") {
       return [
+        NAVIGATE,
         { keys: "d", label: "Download again" },
         { keys: "c", label: "Remove" },
         { keys: "x", label: "Clear" },
@@ -91,6 +94,7 @@ export function footerHints(
     return [{ keys: "p", label: "Pause" }, { keys: "c", label: "Cancel" }, SWITCH, ALWAYS];
   }
   return [
+    NAVIGATE,
     { keys: "d", label: "Download" },
     { keys: "/", label: "Search" },
     { keys: "m", label: "Paste magnet" },
