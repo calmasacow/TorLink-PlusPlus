@@ -1,0 +1,32 @@
+services:
+  torlink:
+    build:
+      context: .
+    image: torlink:latest
+    container_name: torlink
+    restart: unless-stopped
+    ports:
+      - "9117:9117"
+    environment:
+      # Required when exposing Torlink to Radarr/Sonarr or browser/manual API users.
+      TORLINK_API_KEY: "replace-with-a-long-random-api-key"
+
+      # Optional: only needed for Torlink's manual qBittorrent add endpoints.
+      # Radarr/Sonarr should keep using their own download-client settings.
+      TORLINK_QBIT_URL: "http://qbittorrent:8080"
+      TORLINK_QBIT_USERNAME: "replace-with-qbit-user"
+      TORLINK_QBIT_PASSWORD: "replace-with-qbit-password"
+      TORLINK_QBIT_CATEGORY: "torlink"
+      TORLINK_QBIT_SAVE_PATH: ""
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "const http=require('node:http'); const req=http.get('http://127.0.0.1:9117/health',res=>process.exit(res.statusCode===200?0:1)); req.on('error',()=>process.exit(1)); req.setTimeout(3000,()=>{req.destroy(); process.exit(1);});",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
