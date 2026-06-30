@@ -89,6 +89,8 @@ function resultToXmlItem(result: TorrentResult, searchType: string, baseUrl: str
             2030; // Default movie
   }
 
+  const parentCatId = catId >= 5000 ? 5000 : 2000;
+
   return `
     <item>
       <title>${escapeXml(result.name)}</title>
@@ -99,6 +101,8 @@ function resultToXmlItem(result: TorrentResult, searchType: string, baseUrl: str
       <guid isPermaLink="false">urn:btih:${result.infoHash.toLowerCase()}</guid>
       <torznab:attr name="seeders" value="${result.seeders}"/>
       <torznab:attr name="peers" value="${result.leechers}"/>
+      <torznab:attr name="category" value="${catId}"/>
+      <torznab:attr name="category" value="${parentCatId}"/>
       <torznab:attr name="infohash" value="${result.infoHash.toLowerCase()}"/>
       <torznab:attr name="magneturl" value="${escapeXml(result.magnet)}"/>
     </item>`.trim();
