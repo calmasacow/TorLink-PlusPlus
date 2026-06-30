@@ -11,6 +11,10 @@ services:
       # Required when exposing Torlink to Radarr/Sonarr or browser/manual API users.
       TORLINK_API_KEY: "replace-with-a-long-random-api-key"
 
+      # Optional: query used when Radarr/Sonarr validates Torznab without q=.
+      # Keep this as a real broad search term so validation returns at least one categorized result.
+      TORLINK_TORZNAB_EMPTY_QUERY: "avatar"
+
       # Optional: only needed for Torlink's manual qBittorrent add endpoints.
       # Radarr/Sonarr should keep using their own download-client settings.
       # Uncomment these only when you are ready to test manual qBittorrent adds.

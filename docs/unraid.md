@@ -39,6 +39,7 @@ Important: qBittorrent settings in Torlink are only for Torlink's manual add end
 
 ```text
 TORLINK_API_KEY          Required for protected API access.
+TORLINK_TORZNAB_EMPTY_QUERY Optional. Fallback search term for Radarr/Sonarr validation requests without q=.
 TORLINK_QBIT_URL         Optional. qBittorrent Web UI URL for manual adds.
 TORLINK_QBIT_USERNAME    Optional. qBittorrent username for manual adds.
 TORLINK_QBIT_PASSWORD    Optional. qBittorrent password for manual adds.
@@ -59,6 +60,7 @@ services:
   torlink:
     environment:
       TORLINK_API_KEY: "replace-with-your-real-long-random-key"
+      TORLINK_TORZNAB_EMPTY_QUERY: "avatar"
       TORLINK_QBIT_URL: "http://qbittorrent:8080"
       TORLINK_QBIT_USERNAME: "replace-with-qbit-user"
       TORLINK_QBIT_PASSWORD: "replace-with-qbit-password"

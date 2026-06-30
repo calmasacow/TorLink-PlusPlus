@@ -116,14 +116,11 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
         let query = url.searchParams.get("q")?.trim();
         if (!query) {
           if (torznabType) {
-            res.statusCode = 200;
-            res.setHeader("Content-Type", "application/xml; charset=utf-8");
-            const baseUrl = `http://${req.headers.host ?? "localhost:9117"}`;
-            res.end(resultsToXml("", [], torznabType, baseUrl));
+            query = process.env.TORLINK_TORZNAB_EMPTY_QUERY?.trim() || "avatar";
+          } else {
+            sendJson(res, 400, { error: "Missing search query" });
             return;
           }
-          sendJson(res, 400, { error: "Missing search query" });
-          return;
         }
 
         const season = url.searchParams.get("season");
