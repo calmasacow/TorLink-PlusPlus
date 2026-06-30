@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server as HttpServer, type Ser
 import { URL } from "node:url";
 import { runConcurrentSearch } from "../search/concurrent";
 import type { ConcurrentSearchOptions, ConcurrentSearchState } from "../search/concurrent";
+import { CAPS_XML, decodeId, encodeId, resultsToXml } from "./torznab";
 
 export interface ServerOptions {
   port?: number;
@@ -45,19 +46,68 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
         return;
       }
 
-      if (req.method === "GET" && url.pathname === "/api/search") {
+      if (req.method === "GET" && (url.pathname === "/api" || url.pathname === "/api/search")) {
         if (apiKey && authKey(req, url) !== apiKey) {
           sendJson(res, 401, { error: "Unauthorized" });
           return;
         }
 
-        const query = url.searchParams.get("q")?.trim();
+        const t = url.searchParams.get("t");
+        if (t === "caps") {
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "application/xml; charset=utf-8");
+          res.end(CAPS_XML);
+          return;
+        }
+
+        if (t === "download") {
+          const id = url.searchParams.get("id");
+          if (!id) {
+            sendJson(res, 400, { error: "Missing id parameter" });
+            return;
+          }
+          
+          const decoded = decodeId(id);
+          if (!decoded) {
+            sendJson(res, 404, { error: "Invalid download id" });
+            return;
+          }
+
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end(decoded.magnet);
+          return;
+        }
+
+        let query = url.searchParams.get("q")?.trim();
         if (!query) {
           sendJson(res, 400, { error: "Missing search query" });
           return;
         }
 
+        const season = url.searchParams.get("season");
+        const episode = url.searchParams.get("ep");
+        if (t === "tvsearch" && (season || episode)) {
+          query = `${query} ${season ? `S${season.padStart(2, '0')}` : ''}${episode ? `E${episode.padStart(2, '0')}` : ''}`;
+        }
+
         const state = await search(query);
+        
+        // Handle Torznab API requests
+        if (url.pathname === "/api" && (t === "caps" || t === "search" || t === "movie" || t === "tvsearch")) {
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "application/xml; charset=utf-8");
+          const baseUrl = `http://${req.headers.host ?? "localhost:9117"}`;
+          res.end(resultsToXml(
+            query, 
+            state.results, 
+            t === "tvsearch" ? "tvsearch" : t === "movie" ? "movie" : "search",
+            baseUrl
+          ));
+          return;
+        }
+
+        // Handle JSON API requests
         sendJson(res, 200, {
           query,
           count: state.results.length,
