@@ -255,11 +255,11 @@
       items.forEach(item => {
         const title = item.querySelector('title')?.textContent || 'Unknown';
         const size = parseInt(item.querySelector('size')?.textContent || '0');
-        const seeders = item.querySelector('torznab\\:attr[name="seeders"]')?.getAttribute('value') || '0';
-        const peers = item.querySelector('torznab\\:attr[name="peers"]')?.getAttribute('value') || '0';
-        const magnet = item.querySelector('torznab\\:attr[name="magneturl"]')?.getAttribute('value') || '';
+        const seeders = getTorznabAttr(item, 'seeders') || '0';
+        const peers = getTorznabAttr(item, 'peers') || '0';
+        const magnet = getTorznabAttr(item, 'magneturl') || '';
         const category = item.querySelector('category')?.textContent || '';
-        
+
         const source = title.includes('[') ? title.split('[').pop().split(']')[0] : '—';
         
         const tr = document.createElement('tr');
@@ -295,6 +295,14 @@
         
         tbody.appendChild(tr);
       });
+    }
+
+    function getTorznabAttr(item, name) {
+      const attrs = item.getElementsByTagName('torznab:attr');
+      for (const attr of attrs) {
+        if (attr.getAttribute('name') === name) return attr.getAttribute('value') || '';
+      }
+      return '';
     }
     
     function escapeHtml(str) {
