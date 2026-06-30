@@ -90,7 +90,7 @@
       <div id="empty-state" class="flex flex-col items-center justify-center py-16 text-center">
         <i class="fa-solid fa-search text-5xl text-zinc-800 mb-4"></i>
         <div class="text-lg text-zinc-400">Search for movies, TV shows or anime</div>
-        <div class="text-xs text-zinc-500 mt-1">Results will appear here</div>
+        <div class="text-xs text-zinc-500 mt-1">If searches say Unauthorized, click Set API Key in the top right first.</div>
       </div>
     </div>
   </div>
@@ -186,6 +186,11 @@
         
         const res = await fetch(`${API_BASE}/api?${params}`, { headers });
         
+        if (res.status === 401) {
+          showApiKeyModal();
+          throw new Error('Unauthorized: click Set API Key and paste your Torlink API key, then search again.');
+        }
+
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           throw new Error(err.error || `HTTP ${res.status}`);
