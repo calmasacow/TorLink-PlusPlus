@@ -109,8 +109,19 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
           return;
         }
 
+        const torznabType = url.pathname === "/api" && (t === "search" || t === "movie" || t === "tvsearch")
+          ? (t === "tvsearch" ? "tvsearch" : t === "movie" ? "movie" : "search")
+          : null;
+
         let query = url.searchParams.get("q")?.trim();
         if (!query) {
+          if (torznabType) {
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "application/xml; charset=utf-8");
+            const baseUrl = `http://${req.headers.host ?? "localhost:9117"}`;
+            res.end(resultsToXml("", [], torznabType, baseUrl));
+            return;
+          }
           sendJson(res, 400, { error: "Missing search query" });
           return;
         }

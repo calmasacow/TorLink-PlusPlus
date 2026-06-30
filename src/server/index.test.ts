@@ -134,6 +134,20 @@ describe("Torznab API", () => {
     expect(text).toContain("magnet:?xt=urn:btih:def&amp;dn=Test&amp;torrent");
   });
 
+  it("returns empty movie RSS instead of 400 when Radarr validates without q", async () => {
+    const search = vi.fn().mockResolvedValue({ ...idleSearchState(), loading: false });
+    await startTestServer({ search, apiKey: "test-key" });
+
+    const res = await fetch(`${baseUrl()}/api?t=movie&cat=2000,2010,2020,2030,2040,2045,2050,2060&extended=1&apikey=test-key&offset=0&limit=100`);
+    const text = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/xml");
+    verifyRssXml(text);
+    expect(text).toContain('<newznab:response offset="0" total="0"/>');
+    expect(search).not.toHaveBeenCalled();
+  });
+
   it("maps movie categories based on size", async () => {
     const small = result("yts", 1_000_000_000); // <3GB = SD
     const medium = result("yts", 4_000_000_000); // >3GB = HD
