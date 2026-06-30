@@ -99,6 +99,7 @@ function resultToXmlItem(result: TorrentResult, searchType: string, baseUrl: str
       <pubDate>${new Date((result.added ?? 0) * 1000).toUTCString()}</pubDate>
       <link>${escapeXml(`${baseUrl}/api?t=download&id=${encodeId(result)}`)}</link>
       <guid isPermaLink="false">urn:btih:${result.infoHash.toLowerCase()}</guid>
+      <enclosure url="${escapeXml(result.magnet)}" length="${result.sizeBytes}" type="application/x-bittorrent;x-scheme-handler/magnet"/>
       <torznab:attr name="seeders" value="${result.seeders}"/>
       <torznab:attr name="peers" value="${result.leechers}"/>
       <torznab:attr name="category" value="${catId}"/>

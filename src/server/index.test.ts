@@ -149,6 +149,7 @@ describe("Torznab API", () => {
     expect(text).toContain('<category>2030</category>');
     expect(text).toContain('torznab:attr name="category" value="2030"');
     expect(text).toContain('torznab:attr name="category" value="2000"');
+    expect(text).toContain('type="application/x-bittorrent;x-scheme-handler/magnet"');
   });
 
   it("maps movie categories based on size", async () => {
