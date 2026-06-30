@@ -13,11 +13,12 @@ services:
 
       # Optional: only needed for Torlink's manual qBittorrent add endpoints.
       # Radarr/Sonarr should keep using their own download-client settings.
-      TORLINK_QBIT_URL: "http://qbittorrent:8080"
-      TORLINK_QBIT_USERNAME: "replace-with-qbit-user"
-      TORLINK_QBIT_PASSWORD: "replace-with-qbit-password"
-      TORLINK_QBIT_CATEGORY: "torlink"
-      TORLINK_QBIT_SAVE_PATH: ""
+      # Uncomment these only when you are ready to test manual qBittorrent adds.
+      # TORLINK_QBIT_URL: "http://qbittorrent:8080"
+      # TORLINK_QBIT_USERNAME: "replace-with-qbit-user"
+      # TORLINK_QBIT_PASSWORD: "replace-with-qbit-password"
+      # TORLINK_QBIT_CATEGORY: "torlink"
+      # TORLINK_QBIT_SAVE_PATH: ""
     healthcheck:
       test:
         [
