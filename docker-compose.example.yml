@@ -15,6 +15,10 @@ services:
       # Keep this as a real broad search term so validation returns at least one categorized result.
       TORLINK_TORZNAB_EMPTY_QUERY: "avatar"
 
+      # Optional: allow same-origin browser Web UI requests without manually entering the API key.
+      # Off by default. Only enable on a LAN you trust.
+      TORLINK_WEBUI_TRUSTED: "false"
+
       # Optional: only needed for Torlink's manual qBittorrent add endpoints.
       # Radarr/Sonarr should keep using their own download-client settings.
       # Uncomment these only when you are ready to test manual qBittorrent adds.

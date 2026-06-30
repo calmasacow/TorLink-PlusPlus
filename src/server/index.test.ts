@@ -385,6 +385,26 @@ describe("API server", () => {
     expect(await res.json()).toEqual({ error: "Unauthorized" });
   });
 
+  it("allows same-origin Web UI search requests when trusted mode is enabled", async () => {
+    const search = vi.fn().mockResolvedValue(searchState());
+    await startTestServer({ apiKey: "secret", webUiTrusted: true, search });
+
+    const res = await fetch(`${baseUrl()}/api/search?q=ubuntu`, {
+      headers: { Referer: `${baseUrl()}/` },
+    });
+
+    expect(res.status).toBe(200);
+    expect(search).toHaveBeenCalledWith("ubuntu");
+  });
+
+  it("does not allow unauthenticated API requests in trusted mode without same-origin referer", async () => {
+    await startTestServer({ apiKey: "secret", webUiTrusted: true });
+
+    const res = await fetch(`${baseUrl()}/api/search?q=ubuntu`);
+
+    expect(res.status).toBe(401);
+  });
+
   it("accepts X-Api-Key auth", async () => {
     const search = vi.fn().mockResolvedValue(searchState());
     await startTestServer({ apiKey: "secret", search });

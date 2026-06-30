@@ -12,6 +12,7 @@ export interface ServerOptions {
   port?: number;
   host?: string;
   apiKey?: string;
+  webUiTrusted?: boolean;
   search?: (query: string, options?: ConcurrentSearchOptions) => Promise<ConcurrentSearchState>;
   qbitFetch?: typeof fetch;
   qbit?: {
@@ -36,6 +37,29 @@ function authKey(req: IncomingMessage, url: URL): string | undefined {
   const header = req.headers["x-api-key"];
   if (Array.isArray(header)) return header[0];
   return header ?? url.searchParams.get("apikey") ?? undefined;
+}
+
+function envFlag(name: string): boolean {
+  return ["1", "true", "yes", "on"].includes((process.env[name] ?? "").trim().toLowerCase());
+}
+
+function isTrustedWebUiRequest(req: IncomingMessage): boolean {
+  const host = req.headers.host;
+  const referer = req.headers.referer;
+  if (!host || !referer || Array.isArray(referer)) return false;
+
+  try {
+    const refererUrl = new URL(referer);
+    return refererUrl.host === host;
+  } catch {
+    return false;
+  }
+}
+
+function isAuthorized(req: IncomingMessage, url: URL, apiKey: string | undefined, webUiTrusted: boolean): boolean {
+  if (!apiKey) return true;
+  if (authKey(req, url) === apiKey) return true;
+  return webUiTrusted && isTrustedWebUiRequest(req);
 }
 
 function sendJson(res: ServerResponse, status: number, data: unknown): void {
@@ -65,6 +89,7 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
   const host = options.host ?? "0.0.0.0";
   let currentPort = options.port ?? (Number(process.env.TORLINK_PORT) || 9117);
   const apiKey = options.apiKey ?? process.env.TORLINK_API_KEY;
+  const webUiTrusted = options.webUiTrusted ?? envFlag("TORLINK_WEBUI_TRUSTED");
   const search = options.search ?? runConcurrentSearch;
   const qbitFromEnv = !options.qbit ? getQbitOptionsFromEnv(options.qbitFetch) : null;
   const qbit = options.qbit ?? (qbitFromEnv ? createQbitClient(qbitFromEnv) : undefined);
@@ -116,7 +141,7 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
       }
 
       if (req.method === "GET" && (url.pathname === "/api" || url.pathname === "/api/search")) {
-        if (apiKey && authKey(req, url) !== apiKey) {
+        if (!isAuthorized(req, url, apiKey, webUiTrusted)) {
           sendJson(res, 401, { error: "Unauthorized" });
           return;
         }
@@ -193,7 +218,7 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
       }
 
       if (req.method === "POST" && url.pathname === "/api/qbit/test") {
-        if (apiKey && authKey(req, url) !== apiKey) {
+        if (!isAuthorized(req, url, apiKey, webUiTrusted)) {
           sendJson(res, 401, { error: "Unauthorized" });
           return;
         }
@@ -213,7 +238,7 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
       }
 
       if (req.method === "POST" && url.pathname === "/api/qbit/add") {
-        if (apiKey && authKey(req, url) !== apiKey) {
+        if (!isAuthorized(req, url, apiKey, webUiTrusted)) {
           sendJson(res, 401, { error: "Unauthorized" });
           return;
         }

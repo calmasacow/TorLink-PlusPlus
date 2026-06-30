@@ -40,6 +40,7 @@ Important: qBittorrent settings in Torlink are only for Torlink's manual add end
 
 ```text
 TORLINK_API_KEY          Required for protected API access.
+TORLINK_WEBUI_TRUSTED    Optional. Default false. Set true to trust same-origin browser UI requests on a secured LAN.
 TORLINK_TORZNAB_EMPTY_QUERY Optional. Fallback search term for Radarr/Sonarr validation requests without q=.
 TORLINK_QBIT_URL         Optional. qBittorrent Web UI URL for manual adds.
 TORLINK_QBIT_USERNAME    Optional. qBittorrent username for manual adds.
@@ -61,6 +62,7 @@ services:
   torlink:
     environment:
       TORLINK_API_KEY: "replace-with-your-real-long-random-key"
+      TORLINK_WEBUI_TRUSTED: "true"
       TORLINK_TORZNAB_EMPTY_QUERY: "avatar"
       TORLINK_QBIT_URL: "http://qbittorrent:8080"
       TORLINK_QBIT_USERNAME: "replace-with-qbit-user"
@@ -89,7 +91,7 @@ Open the Torlink browser UI at:
 http://HOST:9117/
 ```
 
-The UI can search Torlink, copy magnet links, and send a result to Torlink's optional qBittorrent endpoint. If `TORLINK_API_KEY` is configured, click `Set API Key` in the UI and paste the same key used by Radarr/Sonarr.
+The UI can search Torlink, copy magnet links, and send a result to Torlink's optional qBittorrent endpoint. If `TORLINK_API_KEY` is configured and `TORLINK_WEBUI_TRUSTED` is not enabled, click `Set API Key` in the UI and paste the same key used by Radarr/Sonarr. On a secured LAN, set `TORLINK_WEBUI_TRUSTED=true` to let same-origin browser UI requests work without manually entering the key.
 
 ## Verification
 
