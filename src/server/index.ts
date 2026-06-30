@@ -3,12 +3,23 @@ import { URL } from "node:url";
 import { runConcurrentSearch } from "../search/concurrent";
 import type { ConcurrentSearchOptions, ConcurrentSearchState } from "../search/concurrent";
 import { CAPS_XML, decodeId, encodeId, resultsToXml } from "./torznab";
+import { createQbitClient } from "../qbit/client";
+import type { QbitOptions } from "../qbit/types";
 
 export interface ServerOptions {
   port?: number;
   host?: string;
   apiKey?: string;
   search?: (query: string, options?: ConcurrentSearchOptions) => Promise<ConcurrentSearchState>;
+  qbitFetch?: typeof fetch;
+  qbit?: {
+    test(): Promise<{ ok: boolean; error?: string; status?: number }>;
+    add(opts: { 
+      magnet: string; 
+      category?: string;
+      savePath?: string;
+    }): Promise<{ ok: boolean; error?: string; status?: number }>;
+  };
 }
 
 export interface ApiServer {
@@ -31,11 +42,30 @@ function sendJson(res: ServerResponse, status: number, data: unknown): void {
   res.end(JSON.stringify(data));
 }
 
+function getQbitOptionsFromEnv(fetchImpl?: typeof fetch): QbitOptions | null {
+  const url = process.env.TORLINK_QBIT_URL;
+  const username = process.env.TORLINK_QBIT_USERNAME;
+  const password = process.env.TORLINK_QBIT_PASSWORD;
+  
+  if (!url || !username || !password) return null;
+
+  return {
+    baseUrl: url,
+    username,
+    password,
+    category: process.env.TORLINK_QBIT_CATEGORY,
+    savePath: process.env.TORLINK_QBIT_SAVE_PATH,
+    fetch: fetchImpl,
+  };
+}
+
 export function createApiServer(options: ServerOptions = {}): ApiServer {
   const host = options.host ?? "0.0.0.0";
   let currentPort = options.port ?? (Number(process.env.TORLINK_PORT) || 9117);
   const apiKey = options.apiKey ?? process.env.TORLINK_API_KEY;
   const search = options.search ?? runConcurrentSearch;
+  const qbitFromEnv = !options.qbit ? getQbitOptionsFromEnv(options.qbitFetch) : null;
+  const qbit = options.qbit ?? (qbitFromEnv ? createQbitClient(qbitFromEnv) : undefined);
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
@@ -114,6 +144,63 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
           results: state.results,
           sources: state.perSource,
         });
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/api/qbit/test") {
+        if (apiKey && authKey(req, url) !== apiKey) {
+          sendJson(res, 401, { error: "Unauthorized" });
+          return;
+        }
+
+        if (!qbit) {
+          sendJson(res, 501, { error: "qBittorrent not configured" });
+          return;
+        }
+
+        try {
+          const result = await qbit.test();
+          sendJson(res, result.ok ? 200 : 400, result);
+        } catch {
+          sendJson(res, 500, { error: "Internal server error" });
+        }
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/api/qbit/add") {
+        if (apiKey && authKey(req, url) !== apiKey) {
+          sendJson(res, 401, { error: "Unauthorized" });
+          return;
+        }
+
+        try {
+          let body = "";
+          for await (const chunk of req) {
+            body += chunk;
+          }
+          const { magnet, category, savePath } = JSON.parse(body) as {
+            magnet?: string;
+            category?: string;
+            savePath?: string;
+          };
+
+          if (!magnet || typeof magnet !== "string" || !magnet.startsWith("magnet:?")) {
+            sendJson(res, 400, { error: "Invalid magnet URI" });
+            return;
+          }
+
+          if (!qbit) {
+            sendJson(res, 501, { error: "qBittorrent not configured" });
+            return;
+          }
+
+          const result = await qbit.add({ magnet, category, savePath });
+          sendJson(res, result.ok ? 200 : 400, result);
+        } catch (err) {
+          sendJson(res, 400, { 
+            error: "Invalid request body" 
+          });
+        }
         return;
       }
 

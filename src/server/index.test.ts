@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApiServer, type ApiServer } from "./index";
 import { idleSearchState } from "../search/concurrent";
 import type { ConcurrentSearchState } from "../search/concurrent";
@@ -195,6 +195,145 @@ describe("Torznab API", () => {
     
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: "Invalid download id" });
+  });
+});
+
+describe("qBittorrent API", () => {
+  const mockQbit = {
+    test: vi.fn().mockResolvedValue({ ok: true }),
+    add: vi.fn().mockResolvedValue({ ok: true }),
+  };
+
+  beforeEach(() => {
+    mockQbit.test.mockResolvedValue({ ok: true });
+    mockQbit.add.mockResolvedValue({ ok: true });
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("environment configuration", () => {
+    const originalEnv = process.env;
+
+    beforeEach(() => {
+      process.env = {...originalEnv};
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it("requires API key when configured", async () => {
+      await startTestServer({ apiKey: "secret" });
+      
+      const res = await fetch(`${baseUrl()}/api/qbit/test`, {
+        method: "POST",
+      });
+
+      expect(res.status).toBe(401);
+    });
+
+    it("creates qBittorrent client from env vars when available", async () => {
+      process.env.TORLINK_QBIT_URL = "http://localhost:8080";
+      process.env.TORLINK_QBIT_USERNAME = "admin";
+      process.env.TORLINK_QBIT_PASSWORD = "password";
+      process.env.TORLINK_QBIT_CATEGORY = "torlink";
+
+      const mockFetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/auth/login")) {
+          return Promise.resolve(new Response("Ok.", {
+            status: 200,
+            headers: new Headers({ "Set-Cookie": "SID=abc123" }),
+          }));
+        }
+        return Promise.resolve(new Response("Ok.", { status: 200 }));
+      });
+
+      await startTestServer({ qbitFetch: mockFetch });
+
+      const res = await fetch(`${baseUrl()}/api/qbit/test`, { method: "POST" });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ok: true });
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:8080/api/v2/auth/login",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+
+    it("returns not configured when missing required env vars", async () => {
+      process.env.TORLINK_QBIT_URL = "http://localhost:8080";
+      process.env.TORLINK_QBIT_USERNAME = "admin";
+      // Missing password
+
+      await startTestServer();
+
+      const res = await fetch(`${baseUrl()}/api/qbit/test`, {
+        method: "POST",
+      });
+
+      expect(res.status).toBe(501);
+      expect(await res.json()).toEqual({ 
+        error: "qBittorrent not configured" 
+      });
+    });
+  });
+
+  it("tests qBittorrent connection", async () => {
+    mockQbit.test.mockResolvedValueOnce({ ok: true });
+    await startTestServer({ 
+      apiKey: "secret", 
+      qbit: {
+        test: mockQbit.test,
+        add: mockQbit.add,
+      } 
+    });
+
+    const res = await fetch(`${baseUrl()}/api/qbit/test`, {
+      method: "POST",
+      headers: { "X-Api-Key": "secret" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockQbit.test).toHaveBeenCalledOnce();
+  });
+
+  it("adds torrent to qBittorrent", async () => {
+    const magnet = "magnet:?xt=urn:btih:abc123";
+    await startTestServer({ apiKey: "secret", qbit: mockQbit });
+
+    const res = await fetch(`${baseUrl()}/api/qbit/add`, {
+      method: "POST",
+      headers: { 
+        "X-Api-Key": "secret",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ magnet }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockQbit.add).toHaveBeenCalledWith({ 
+      magnet,
+    });
+  });
+
+  it("rejects invalid magnets", async () => {
+    await startTestServer({ apiKey: "secret" });
+
+    const res = await fetch(`${baseUrl()}/api/qbit/add`, {
+      method: "POST",
+      headers: { 
+        "X-Api-Key": "secret",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ magnet: "invalid" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({
+      error: "Invalid magnet URI",
+    });
   });
 });
 
