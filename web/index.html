@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Torlink</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .result-row:hover { background-color: #1f2937; }
+    .toast { animation: slideUp 0.3s ease forwards; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-8 py-5 border-b border-zinc-800">
+      <div class="flex items-center gap-x-3">
+        <div class="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center">
+          <i class="fa-solid fa-magnet text-white text-2xl"></i>
+        </div>
+        <div>
+          <div class="font-semibold text-2xl tracking-tight">Torlink</div>
+          <div class="text-[10px] text-zinc-500 -mt-1">Torznab + qBittorrent</div>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-x-4 text-sm">
+        <div class="flex items-center gap-x-2 bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800">
+          <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+          <span class="text-emerald-400 text-xs font-medium">CONNECTED</span>
+        </div>
+        <div onclick="showApiKeyModal()" class="cursor-pointer flex items-center gap-x-2 text-xs px-3 py-1.5 rounded-xl border border-zinc-800 hover:bg-zinc-900">
+          <i class="fa-solid fa-key text-zinc-400"></i>
+          <span id="api-key-status" class="font-mono text-zinc-400">API Key</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="px-8 pt-8 pb-4">
+      <div class="flex gap-3">
+        <div class="flex-1">
+          <input id="query" type="text" placeholder="Search movies, TV shows, anime..." 
+                 class="w-full bg-zinc-900 border border-zinc-800 focus:border-emerald-600 transition-colors text-lg px-5 py-3.5 rounded-2xl outline-none placeholder:text-zinc-500"
+                 onkeypress="if (event.key === 'Enter') performSearch()">
+        </div>
+        
+        <select id="search-type" class="bg-zinc-900 border border-zinc-800 text-sm px-4 rounded-2xl outline-none">
+          <option value="movie">Movies</option>
+          <option value="tvsearch">TV Shows</option>
+          <option value="search">All</option>
+        </select>
+        
+        <button onclick="performSearch()" 
+                class="px-8 bg-emerald-600 hover:bg-emerald-500 transition-all font-medium rounded-2xl flex items-center gap-x-2">
+          <i class="fa-solid fa-search"></i>
+          <span>Search</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="px-8">
+      <div id="results-header" class="hidden flex items-center justify-between mb-3 px-1">
+        <div class="text-sm text-zinc-400">
+          <span id="result-count"></span> results
+        </div>
+      </div>
+
+      <div id="results-container" class="hidden bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+        <table class="w-full">
+          <thead class="bg-zinc-950 border-b border-zinc-800 text-xs">
+            <tr>
+              <th class="text-left py-3.5 px-6 font-medium text-zinc-400">Title</th>
+              <th class="text-left py-3.5 px-4 font-medium text-zinc-400 w-24">Source</th>
+              <th class="text-right py-3.5 px-4 font-medium text-zinc-400 w-28">Size</th>
+              <th class="text-center py-3.5 px-4 font-medium text-zinc-400 w-20">Seeders</th>
+              <th class="text-center py-3.5 px-4 font-medium text-zinc-400 w-20">Peers</th>
+              <th class="text-center py-3.5 px-6 font-medium text-zinc-400 w-28">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="results-body" class="text-sm divide-y divide-zinc-800"></tbody>
+        </table>
+      </div>
+
+      <!-- Empty / Loading state -->
+      <div id="empty-state" class="flex flex-col items-center justify-center py-16 text-center">
+        <i class="fa-solid fa-search text-5xl text-zinc-800 mb-4"></i>
+        <div class="text-lg text-zinc-400">Search for movies, TV shows or anime</div>
+        <div class="text-xs text-zinc-500 mt-1">Results will appear here</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2"></div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    
+    function getApiKey() {
+      return localStorage.getItem('torlink_api_key') || '';
+    }
+    
+    function setApiKey(key) {
+      localStorage.setItem('torlink_api_key', key);
+      updateApiKeyStatus();
+    }
+    
+    function updateApiKeyStatus() {
+      const el = document.getElementById('api-key-status');
+      const key = getApiKey();
+      if (key) {
+        el.textContent = key.substring(0, 8) + '...';
+        el.classList.add('text-emerald-400');
+      } else {
+        el.textContent = 'Set API Key';
+        el.classList.remove('text-emerald-400');
+      }
+    }
+    
+    function showApiKeyModal() {
+      const current = getApiKey();
+      const key = prompt('Enter your Torlink API Key:', current);
+      if (key !== null) {
+        setApiKey(key.trim());
+      }
+    }
+    
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const bg = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-zinc-700';
+      const icon = type === 'success' ? 'fa-check' : type === 'error' ? 'fa-exclamation' : 'fa-info';
+      
+      toast.className = `toast flex items-center gap-x-3 px-5 py-3 rounded-2xl shadow-xl text-sm ${bg}`;
+      toast.innerHTML = `
+        <i class="fa-solid ${icon}"></i>
+        <span>${message}</span>
+      `;
+      
+      container.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.transition = 'all 0.2s';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 200);
+      }, 2800);
+    }
+    
+    async function performSearch() {
+      const query = document.getElementById('query').value.trim();
+      if (!query) return;
+      
+      const type = document.getElementById('search-type').value;
+      const container = document.getElementById('results-container');
+      const empty = document.getElementById('empty-state');
+      const header = document.getElementById('results-header');
+      
+      empty.classList.add('hidden');
+      container.classList.add('hidden');
+      header.classList.add('hidden');
+      
+      // Show loading
+      const loading = document.createElement('div');
+      loading.id = 'loading-state';
+      loading.className = 'flex items-center justify-center py-12 text-emerald-400';
+      loading.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-3xl"></i>`;
+      document.querySelector('#results-container').parentNode.appendChild(loading);
+      
+      try {
+        const params = new URLSearchParams({
+          q: query,
+          t: type,
+          extended: '1',
+          limit: '100'
+        });
+        
+        const headers = {};
+        const apiKey = getApiKey();
+        if (apiKey) headers['X-Api-Key'] = apiKey;
+        
+        const res = await fetch(`${API_BASE}/api?${params}`, { headers });
+        
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+        
+        const text = await res.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, 'text/xml');
+        
+        const items = Array.from(xml.querySelectorAll('item'));
+        
+        renderResults(items);
+        
+      } catch (err) {
+        showToast(err.message || 'Search failed', 'error');
+        empty.classList.remove('hidden');
+      } finally {
+        const loadingEl = document.getElementById('loading-state');
+        if (loadingEl) loadingEl.remove();
+      }
+    }
+    
+    function renderResults(items) {
+      const tbody = document.getElementById('results-body');
+      const container = document.getElementById('results-container');
+      const empty = document.getElementById('empty-state');
+      const header = document.getElementById('results-header');
+      
+      tbody.innerHTML = '';
+      
+      if (items.length === 0) {
+        empty.classList.remove('hidden');
+        container.classList.add('hidden');
+        header.classList.add('hidden');
+        return;
+      }
+      
+      header.classList.remove('hidden');
+      container.classList.remove('hidden');
+      empty.classList.add('hidden');
+      
+      document.getElementById('result-count').textContent = items.length;
+      
+      items.forEach(item => {
+        const title = item.querySelector('title')?.textContent || 'Unknown';
+        const size = parseInt(item.querySelector('size')?.textContent || '0');
+        const seeders = item.querySelector('torznab\\:attr[name="seeders"]')?.getAttribute('value') || '0';
+        const peers = item.querySelector('torznab\\:attr[name="peers"]')?.getAttribute('value') || '0';
+        const magnet = item.querySelector('torznab\\:attr[name="magneturl"]')?.getAttribute('value') || '';
+        const category = item.querySelector('category')?.textContent || '';
+        
+        const source = title.includes('[') ? title.split('[').pop().split(']')[0] : '—';
+        
+        const tr = document.createElement('tr');
+        tr.className = 'result-row border-b border-zinc-800 last:border-0';
+        
+        tr.innerHTML = `
+          <td class="px-6 py-4 pr-8 text-sm leading-tight">
+            <div class="line-clamp-2">${escapeHtml(title)}</div>
+          </td>
+          <td class="px-4 py-4 text-xs text-zinc-400 font-mono">${escapeHtml(source)}</td>
+          <td class="px-4 py-4 text-right font-mono text-xs text-zinc-400">${formatBytes(size)}</td>
+          <td class="px-4 py-4 text-center">
+            <span class="inline-flex items-center justify-center text-emerald-400 font-mono text-xs">${seeders}</span>
+          </td>
+          <td class="px-4 py-4 text-center">
+            <span class="inline-flex items-center justify-center text-amber-400 font-mono text-xs">${peers}</span>
+          </td>
+          <td class="px-6 py-4">
+            <div class="flex justify-center gap-x-1.5">
+              <button onclick="copyMagnet('${escapeHtml(magnet)}')" 
+                      class="px-3 py-1.5 text-xs rounded-xl border border-zinc-700 hover:bg-zinc-800 flex items-center gap-x-1.5 transition-colors">
+                <i class="fa-solid fa-copy"></i>
+                <span class="hidden md:inline">Copy</span>
+              </button>
+              <button onclick="sendToQbit('${escapeHtml(magnet)}')" 
+                      class="px-3 py-1.5 text-xs rounded-xl bg-emerald-600 hover:bg-emerald-500 flex items-center gap-x-1.5 transition-colors">
+                <i class="fa-solid fa-download"></i>
+                <span class="hidden md:inline">qBittorrent</span>
+              </button>
+            </div>
+          </td>
+        `;
+        
+        tbody.appendChild(tr);
+      });
+    }
+    
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '—';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+    
+    async function copyMagnet(magnet) {
+      if (!magnet) {
+        showToast('No magnet link available', 'error');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(magnet);
+        showToast('Magnet copied to clipboard');
+      } catch (e) {
+        showToast('Failed to copy', 'error');
+      }
+    }
+    
+    async function sendToQbit(magnet) {
+      if (!magnet) {
+        showToast('No magnet link available', 'error');
+        return;
+      }
+      
+      const apiKey = getApiKey();
+      const headers = { 'Content-Type': 'application/json' };
+      if (apiKey) headers['X-Api-Key'] = apiKey;
+      
+      try {
+        const res = await fetch(`${API_BASE}/api/qbit/add`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ magnet })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+          showToast('Sent to qBittorrent successfully!', 'success');
+        } else {
+          showToast(data.error || 'Failed to send', 'error');
+        }
+      } catch (err) {
+        showToast('Network error', 'error');
+      }
+    }
+    
+    // Init
+    function init() {
+      updateApiKeyStatus();
+      
+      // Demo hint
+      const queryInput = document.getElementById('query');
+      queryInput.placeholder = "Try 'avatar' or 'the last of us'";
+    }
+    
+    window.onload = init;
+  </script>
+</body>
+</html>

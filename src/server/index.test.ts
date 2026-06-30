@@ -356,6 +356,17 @@ describe("qBittorrent API", () => {
 });
 
 describe("API server", () => {
+  it("serves the Web UI at the root path", async () => {
+    await startTestServer();
+
+    const res = await fetch(`${baseUrl()}/`);
+    const text = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    expect(text).toContain("<title>Torlink</title>");
+  });
+
   it("returns JSON ok for /health", async () => {
     await startTestServer();
 

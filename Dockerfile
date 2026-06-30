@@ -13,6 +13,7 @@ RUN pnpm install --frozen-lockfile --config.dangerously-allow-all-builds=true
 COPY tsconfig.json tsup.config.ts ./
 COPY scripts ./scripts
 COPY src ./src
+COPY web ./web
 RUN pnpm run build && pnpm prune --prod
 
 FROM node:22-alpine AS runtime
@@ -25,6 +26,7 @@ RUN addgroup -S torlink && adduser -S torlink -G torlink
 COPY --from=builder --chown=torlink:torlink /app/package.json ./package.json
 COPY --from=builder --chown=torlink:torlink /app/node_modules ./node_modules
 COPY --from=builder --chown=torlink:torlink /app/dist ./dist
+COPY --from=builder --chown=torlink:torlink /app/web ./web
 
 USER torlink
 

@@ -12,6 +12,7 @@ node dist/index.js serve
 
 It listens on port `9117` and exposes:
 
+- `GET /` browser Web UI
 - `GET /health`
 - `GET /api?t=caps`
 - `GET /api?t=search&q=...`
@@ -79,6 +80,16 @@ docker compose -f docker-compose.example.yml up -d --build
 ```
 
 For Unraid Compose Manager, create a stack using the compose example, then add your real values in `docker-compose.override.yml` as shown above.
+
+## Web UI
+
+Open the Torlink browser UI at:
+
+```text
+http://HOST:9117/
+```
+
+The UI can search Torlink, copy magnet links, and send a result to Torlink's optional qBittorrent endpoint. If `TORLINK_API_KEY` is configured, click `Set API Key` in the UI and paste the same key used by Radarr/Sonarr.
 
 ## Verification
 

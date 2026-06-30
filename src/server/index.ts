@@ -5,6 +5,8 @@ import type { ConcurrentSearchOptions, ConcurrentSearchState } from "../search/c
 import { CAPS_XML, decodeId, encodeId, resultsToXml } from "./torznab";
 import { createQbitClient } from "../qbit/client";
 import type { QbitOptions } from "../qbit/types";
+import { resolve, extname, sep } from "node:path";
+import { readFile, stat } from "node:fs/promises";
 
 export interface ServerOptions {
   port?: number;
@@ -70,6 +72,43 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
+    // Static Web UI serving (only if web/ dir exists at request time)
+    if (req.method === "GET" &&
+        !url.pathname.startsWith("/api") &&
+        url.pathname !== "/health") {
+
+      try {
+        const webRoot = resolve(process.cwd(), "web");
+        const requestedPath = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname.replace(/^\/+/u, ""));
+        let filePath = resolve(webRoot, requestedPath);
+
+        if (filePath !== webRoot && !filePath.startsWith(`${webRoot}${sep}`)) {
+          sendJson(res, 404, { error: "Not found" });
+          return;
+        }
+
+        const fileStat = await stat(filePath).catch(() => null as any);
+        if (fileStat) {
+          if (fileStat.isDirectory()) {
+            filePath = resolve(filePath, "index.html");
+          }
+          const content = await readFile(filePath);
+          const ext = extname(filePath);
+          const contentType =
+            ext === ".html" ? "text/html; charset=utf-8" :
+            ext === ".js"  ? "application/javascript" :
+            ext === ".css" ? "text/css" : "application/octet-stream";
+
+          res.statusCode = 200;
+          res.setHeader("Content-Type", contentType);
+          res.end(content);
+          return;
+        }
+      } catch {
+        // fall through to API
+      }
+    }
+
     try {
       if (req.method === "GET" && url.pathname === "/health") {
         sendJson(res, 200, { status: "ok" });
@@ -131,7 +170,6 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
 
         const state = await search(query);
         
-        // Handle Torznab API requests
         if (url.pathname === "/api" && (t === "caps" || t === "search" || t === "movie" || t === "tvsearch")) {
           res.statusCode = 200;
           res.setHeader("Content-Type", "application/xml; charset=utf-8");
@@ -145,7 +183,6 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
           return;
         }
 
-        // Handle JSON API requests
         sendJson(res, 200, {
           query,
           count: state.results.length,
@@ -204,16 +241,17 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
 
           const result = await qbit.add({ magnet, category, savePath });
           sendJson(res, result.ok ? 200 : 400, result);
-        } catch (err) {
-          sendJson(res, 400, { 
-            error: "Invalid request body" 
+        } catch {
+          sendJson(res, 400, {
+            error: "Invalid request body"
           });
         }
         return;
       }
 
       sendJson(res, 404, { error: "Not found" });
-    } catch {
+    } catch (err: any) {
+      console.error(err);
       sendJson(res, 500, { error: "Internal server error" });
     }
   });
