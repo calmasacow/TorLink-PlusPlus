@@ -6,37 +6,48 @@
   <title>Torlink</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    .result-row:hover { background-color: #1f2937; }
+    :root {
+      --tl-purple: #7B62D9;
+      --tl-purple-light: #A38DF2;
+      --tl-purple-muted: #766BBF;
+      --tl-green: #4EBF5F;
+      --tl-black: #000000;
+      --tl-gray: #575657;
+      --tl-white: #FFFFFF;
+    }
+    body {
+      background: var(--tl-black);
+      color: var(--tl-white);
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    }
+    .result-row:hover { background-color: rgba(123, 98, 217, 0.12); }
     .toast { animation: slideUp 0.3s ease forwards; }
     .loading-progress { animation: loadingPulse 1s ease-in-out infinite; }
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes loadingPulse { 0% { transform: translateX(-100%); } 50% { transform: translateX(20%); } 100% { transform: translateX(100%); } }
   </style>
 </head>
-<body class="bg-zinc-950 text-zinc-200">
+<body class="bg-black text-white">
   <div class="max-w-7xl mx-auto">
     <!-- Header -->
-    <div class="flex items-center justify-between px-8 py-5 border-b border-zinc-800">
-      <div class="flex items-center gap-x-3">
-        <div class="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center">
-          <i class="fa-solid fa-magnet text-white text-2xl"></i>
-        </div>
-        <div>
-          <div class="font-semibold text-2xl tracking-tight">Torlink</div>
-          <div class="text-[10px] text-zinc-500 -mt-1">Torznab + qBittorrent</div>
-        </div>
+    <div class="flex items-center justify-between px-8 py-5 border-b border-[#575657]">
+      <div class="flex items-center gap-x-4">
+        <img src="/torlink-logo.jpg" alt="Torlink" class="h-12 w-auto object-contain" width="242" height="64">
+        <div class="hidden sm:block text-[11px] text-[#A38DF2] tracking-wide">Torznab + qBittorrent</div>
       </div>
       
       <div class="flex items-center gap-x-4 text-sm">
-        <div class="flex items-center gap-x-2 bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800">
-          <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-          <span class="text-emerald-400 text-xs font-medium">CONNECTED</span>
+        <div class="flex items-center gap-x-2 bg-black px-3 py-1.5 rounded-md border border-[#575657]">
+          <div class="w-2 h-2 bg-[#4EBF5F] rounded-full animate-pulse"></div>
+          <span class="text-[#4EBF5F] text-xs font-medium">CONNECTED</span>
         </div>
-        <div onclick="showApiKeyModal()" class="cursor-pointer flex items-center gap-x-2 text-xs px-3 py-1.5 rounded-xl border border-zinc-800 hover:bg-zinc-900">
-          <i class="fa-solid fa-key text-zinc-400"></i>
-          <span id="api-key-status" class="font-mono text-zinc-400">API Key</span>
+        <div onclick="showApiKeyModal()" class="cursor-pointer flex items-center gap-x-2 text-xs px-3 py-1.5 rounded-md border border-[#575657] hover:bg-[#7B62D9]/20">
+          <i class="fa-solid fa-key text-[#A38DF2]"></i>
+          <span id="api-key-status" class="font-mono text-[#A38DF2]">API Key</span>
         </div>
       </div>
     </div>
@@ -46,18 +57,18 @@
       <div class="flex gap-3">
         <div class="flex-1">
           <input id="query" type="text" placeholder="Search movies, TV shows, anime..." 
-                 class="w-full bg-zinc-900 border border-zinc-800 focus:border-emerald-600 transition-colors text-lg px-5 py-3.5 rounded-2xl outline-none placeholder:text-zinc-500"
+                 class="w-full bg-black border border-[#766BBF] focus:border-[#A38DF2] transition-colors text-lg px-5 py-3.5 rounded-md outline-none placeholder:text-[#575657]"
                  onkeypress="if (event.key === 'Enter') performSearch()">
         </div>
         
-        <select id="search-type" class="bg-zinc-900 border border-zinc-800 text-sm px-4 rounded-2xl outline-none">
+        <select id="search-type" class="bg-black border border-[#766BBF] text-sm px-4 rounded-md outline-none text-white">
           <option value="movie">Movies</option>
           <option value="tvsearch">TV Shows</option>
           <option value="search">All</option>
         </select>
         
         <button onclick="performSearch()" 
-                class="px-8 bg-emerald-600 hover:bg-emerald-500 transition-all font-medium rounded-2xl flex items-center gap-x-2">
+                class="px-8 bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black transition-all font-medium rounded-md flex items-center gap-x-2">
           <i class="fa-solid fa-search"></i>
           <span>Search</span>
         </button>
@@ -67,32 +78,32 @@
     <!-- Results -->
     <div class="px-8">
       <div id="results-header" class="hidden flex items-center justify-between mb-3 px-1">
-        <div class="text-sm text-zinc-400">
+        <div class="text-sm text-[#A38DF2]">
           <span id="result-count"></span> results
         </div>
       </div>
 
-      <div id="results-container" class="hidden bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+      <div id="results-container" class="hidden bg-black border border-[#575657] rounded-md overflow-hidden">
         <table class="w-full">
-          <thead class="bg-zinc-950 border-b border-zinc-800 text-xs">
+          <thead class="bg-black border-b border-[#575657] text-xs">
             <tr>
-              <th class="text-left py-3.5 px-6 font-medium text-zinc-400">Title</th>
-              <th class="text-left py-3.5 px-4 font-medium text-zinc-400 w-24">Source</th>
-              <th class="text-right py-3.5 px-4 font-medium text-zinc-400 w-28">Size</th>
-              <th class="text-center py-3.5 px-4 font-medium text-zinc-400 w-20">Seeders</th>
-              <th class="text-center py-3.5 px-4 font-medium text-zinc-400 w-20">Peers</th>
-              <th class="text-center py-3.5 px-6 font-medium text-zinc-400 w-28">Actions</th>
+              <th class="text-left py-3.5 px-6 font-medium text-[#A38DF2]">Title</th>
+              <th class="text-left py-3.5 px-4 font-medium text-[#A38DF2] w-24">Source</th>
+              <th class="text-right py-3.5 px-4 font-medium text-[#A38DF2] w-28">Size</th>
+              <th class="text-center py-3.5 px-4 font-medium text-[#A38DF2] w-20">Seeders</th>
+              <th class="text-center py-3.5 px-4 font-medium text-[#A38DF2] w-20">Peers</th>
+              <th class="text-center py-3.5 px-6 font-medium text-[#A38DF2] w-28">Actions</th>
             </tr>
           </thead>
-          <tbody id="results-body" class="text-sm divide-y divide-zinc-800"></tbody>
+          <tbody id="results-body" class="text-sm divide-y divide-[#575657]"></tbody>
         </table>
       </div>
 
       <!-- Empty / Loading state -->
       <div id="empty-state" class="flex flex-col items-center justify-center py-16 text-center">
-        <i class="fa-solid fa-search text-5xl text-zinc-800 mb-4"></i>
-        <div class="text-lg text-zinc-400">Search for movies, TV shows or anime</div>
-        <div class="text-xs text-zinc-500 mt-1">If searches say Unauthorized, click Set API Key in the top right first.</div>
+        <i class="fa-solid fa-search text-5xl text-[#766BBF] mb-4"></i>
+        <div class="text-lg text-[#A38DF2]">Search for movies, TV shows or anime</div>
+        <div class="text-xs text-[#575657] mt-1">If searches say Unauthorized, click Set API Key in the top right first.</div>
       </div>
     </div>
   </div>
@@ -117,10 +128,10 @@
       const key = getApiKey();
       if (key) {
         el.textContent = key.substring(0, 8) + '...';
-        el.classList.add('text-emerald-400');
+        el.style.color = '#4EBF5F';
       } else {
         el.textContent = 'Set API Key';
-        el.classList.remove('text-emerald-400');
+        el.style.color = '#A38DF2';
       }
     }
     
@@ -136,10 +147,10 @@
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
       
-      const bg = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-zinc-700';
+      const bg = type === 'success' ? 'bg-[#4EBF5F] text-black' : type === 'error' ? 'bg-red-600 text-white' : 'bg-[#575657] text-white';
       const icon = type === 'success' ? 'fa-check' : type === 'error' ? 'fa-exclamation' : 'fa-info';
       
-      toast.className = `toast flex items-center gap-x-3 px-5 py-3 rounded-2xl shadow-xl text-sm ${bg}`;
+      toast.className = `toast flex items-center gap-x-3 px-5 py-3 rounded-md text-sm ${bg}`;
       toast.innerHTML = `
         <i class="fa-solid ${icon}"></i>
         <span>${message}</span>
@@ -171,13 +182,13 @@
       document.getElementById('loading-state')?.remove();
       const loading = document.createElement('div');
       loading.id = 'loading-state';
-      loading.className = 'flex flex-col items-center justify-center gap-3 py-12 text-emerald-400';
+      loading.className = 'flex flex-col items-center justify-center gap-3 py-12 text-[#A38DF2]';
       loading.innerHTML = `
-        <div class="w-52 h-2 bg-zinc-800 rounded-full overflow-hidden border border-zinc-700">
-          <div class="loading-progress h-full w-1/2 bg-emerald-500 rounded-full"></div>
+        <div class="w-52 h-2 bg-black rounded-sm overflow-hidden border border-[#575657]">
+          <div class="loading-progress h-full w-1/2 bg-[#4EBF5F] rounded-sm"></div>
         </div>
         <div id="loading-message" class="text-sm font-medium">Searching Torlink<span id="loading-dots">.</span></div>
-        <div id="loading-elapsed" class="text-xs text-zinc-500">0.0s elapsed</div>
+        <div id="loading-elapsed" class="text-xs text-[#575657]">0.0s elapsed</div>
       `;
       document.querySelector('#results-container').parentNode.appendChild(loading);
       
@@ -263,29 +274,29 @@
         const source = title.includes('[') ? title.split('[').pop().split(']')[0] : '—';
         
         const tr = document.createElement('tr');
-        tr.className = 'result-row border-b border-zinc-800 last:border-0';
+        tr.className = 'result-row border-b border-[#575657] last:border-0';
         
         tr.innerHTML = `
           <td class="px-6 py-4 pr-8 text-sm leading-tight">
             <div class="line-clamp-2">${escapeHtml(title)}</div>
           </td>
-          <td class="px-4 py-4 text-xs text-zinc-400 font-mono">${escapeHtml(source)}</td>
-          <td class="px-4 py-4 text-right font-mono text-xs text-zinc-400">${formatBytes(size)}</td>
+          <td class="px-4 py-4 text-xs text-[#575657] font-mono">${escapeHtml(source)}</td>
+          <td class="px-4 py-4 text-right font-mono text-xs text-[#575657]">${formatBytes(size)}</td>
           <td class="px-4 py-4 text-center">
-            <span class="inline-flex items-center justify-center text-emerald-400 font-mono text-xs">${seeders}</span>
+            <span class="inline-flex items-center justify-center font-mono text-xs text-[#4EBF5F]">${seeders}</span>
           </td>
           <td class="px-4 py-4 text-center">
-            <span class="inline-flex items-center justify-center text-amber-400 font-mono text-xs">${peers}</span>
+            <span class="inline-flex items-center justify-center font-mono text-xs text-[#A38DF2]">${peers}</span>
           </td>
           <td class="px-6 py-4">
             <div class="flex justify-center gap-x-1.5">
               <button onclick="copyMagnet('${escapeHtml(magnet)}')" 
-                      class="px-3 py-1.5 text-xs rounded-xl border border-zinc-700 hover:bg-zinc-800 flex items-center gap-x-1.5 transition-colors">
+                      class="px-3 py-1.5 text-xs rounded-md border border-[#575657] hover:bg-[#7B62D9]/20 flex items-center gap-x-1.5 transition-colors">
                 <i class="fa-solid fa-copy"></i>
                 <span class="hidden md:inline">Copy</span>
               </button>
               <button onclick="sendToQbit('${escapeHtml(magnet)}')" 
-                      class="px-3 py-1.5 text-xs rounded-xl bg-emerald-600 hover:bg-emerald-500 flex items-center gap-x-1.5 transition-colors">
+                      class="px-3 py-1.5 text-xs rounded-md bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black flex items-center gap-x-1.5 transition-colors">
                 <i class="fa-solid fa-download"></i>
                 <span class="hidden md:inline">qBittorrent</span>
               </button>
