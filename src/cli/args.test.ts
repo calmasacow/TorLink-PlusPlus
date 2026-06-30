@@ -23,6 +23,11 @@ describe("parseCliArgs", () => {
       initialTorrent: "./Foo.torrent",
     });
   });
+  it("parses serve command", () => {
+    expect(parseCliArgs(["serve"])).toEqual({ kind: "serve" });
+    expect(parseCliArgs(["serve", "8080"])).toEqual({ kind: "serve", port: 8080 });
+  });
+
   it("rejects unknown arguments", () => {
     expect(parseCliArgs(["--nope"])).toEqual({ kind: "invalid", arg: "--nope" });
   });

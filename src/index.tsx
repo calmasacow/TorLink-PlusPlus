@@ -3,7 +3,32 @@ import { parseCliArgs, HELP_TEXT } from "./cli/args";
 import { VERSION } from "./version";
 import { App } from "./ui/App";
 
+import { createApiServer } from "./server";
+
 const cmd = parseCliArgs(process.argv.slice(2));
+
+if (cmd.kind === "serve") {
+  const server = createApiServer({
+    port: cmd.port,
+    apiKey: process.env.TORLINK_API_KEY,
+  });
+
+  server
+    .start()
+    .then(() => {
+      console.log(`torlink server listening on port ${server.port}`);
+    })
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+
+  const stop = (): void => {
+    void server.stop().finally(() => process.exit(0));
+  };
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
+} else {
 
 if (cmd.kind === "help") {
   console.log(HELP_TEXT);
@@ -80,3 +105,4 @@ process.on("uncaughtException", (err) => {
   console.error(err);
   process.exit(1);
 });
+}
