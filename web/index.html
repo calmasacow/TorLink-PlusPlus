@@ -10,7 +10,9 @@
     body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     .result-row:hover { background-color: #1f2937; }
     .toast { animation: slideUp 0.3s ease forwards; }
+    .loading-progress { animation: loadingPulse 1s ease-in-out infinite; }
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes loadingPulse { 0% { transform: translateX(-100%); } 50% { transform: translateX(20%); } 100% { transform: translateX(100%); } }
   </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200">
@@ -165,13 +167,28 @@
       container.classList.add('hidden');
       header.classList.add('hidden');
       
-      // Show loading
+      // Show loading with local animation plus JS-updated text so activity is obvious.
+      document.getElementById('loading-state')?.remove();
       const loading = document.createElement('div');
       loading.id = 'loading-state';
-      loading.className = 'flex items-center justify-center py-12 text-emerald-400';
-      loading.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-3xl"></i>`;
+      loading.className = 'flex flex-col items-center justify-center gap-3 py-12 text-emerald-400';
+      loading.innerHTML = `
+        <div class="w-52 h-2 bg-zinc-800 rounded-full overflow-hidden border border-zinc-700">
+          <div class="loading-progress h-full w-1/2 bg-emerald-500 rounded-full"></div>
+        </div>
+        <div id="loading-message" class="text-sm font-medium">Searching Torlink<span id="loading-dots">.</span></div>
+        <div id="loading-elapsed" class="text-xs text-zinc-500">0.0s elapsed</div>
+      `;
       document.querySelector('#results-container').parentNode.appendChild(loading);
       
+      const loadingStarted = Date.now();
+      const loadingTimer = setInterval(() => {
+        const elapsed = (Date.now() - loadingStarted) / 1000;
+        const dots = '.'.repeat((Math.floor(elapsed * 2) % 3) + 1);
+        loading.querySelector('#loading-dots').textContent = dots;
+        loading.querySelector('#loading-elapsed').textContent = `${elapsed.toFixed(1)}s elapsed`;
+      }, 250);
+
       try {
         const params = new URLSearchParams({
           q: query,
@@ -208,6 +225,7 @@
         showToast(err.message || 'Search failed', 'error');
         empty.classList.remove('hidden');
       } finally {
+        clearInterval(loadingTimer);
         const loadingEl = document.getElementById('loading-state');
         if (loadingEl) loadingEl.remove();
       }
