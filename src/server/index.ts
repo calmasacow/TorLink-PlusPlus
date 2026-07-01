@@ -7,6 +7,8 @@ import { createQbitClient } from "../qbit/client";
 import type { QbitOptions } from "../qbit/types";
 import { resolve, extname, sep } from "node:path";
 import { readFile, stat } from "node:fs/promises";
+import type { QueueItem } from "../download/types";
+import type { SourceId } from "../sources/types";
 
 export interface ServerOptions {
   port?: number;
@@ -22,6 +24,14 @@ export interface ServerOptions {
       category?: string;
       savePath?: string;
     }): Promise<{ ok: boolean; error?: string; status?: number }>;
+  };
+  downloadDir?: string;
+  downloadQueue?: {
+    add(input: { id: string; name: string; magnet: string; source?: SourceId; sizeBytes?: number }, dir: string): void;
+    getItems(): QueueItem[];
+    pause(id: string): void;
+    resume(id: string): void;
+    cancel(id: string): void;
   };
 }
 
@@ -93,6 +103,8 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
   const search = options.search ?? runConcurrentSearch;
   const qbitFromEnv = !options.qbit ? getQbitOptionsFromEnv(options.qbitFetch) : null;
   const qbit = options.qbit ?? (qbitFromEnv ? createQbitClient(qbitFromEnv) : undefined);
+  const downloadDir = options.downloadDir ?? process.env.TORLINK_DOWNLOAD_DIR ?? "/downloads";
+  const downloadQueue = options.downloadQueue;
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
@@ -234,6 +246,90 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
         } catch {
           sendJson(res, 500, { error: "Internal server error" });
         }
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/api/downloads") {
+        if (!isAuthorized(req, url, apiKey, webUiTrusted)) {
+          sendJson(res, 401, { error: "Unauthorized" });
+          return;
+        }
+
+        sendJson(res, 200, {
+          downloadDir,
+          items: downloadQueue ? downloadQueue.getItems() : [],
+        });
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/api/downloads/add") {
+        if (!isAuthorized(req, url, apiKey, webUiTrusted)) {
+          sendJson(res, 401, { error: "Unauthorized" });
+          return;
+        }
+
+        if (!downloadQueue) {
+          sendJson(res, 501, { error: "Built-in downloader not configured" });
+          return;
+        }
+
+        try {
+          let body = "";
+          for await (const chunk of req) {
+            body += chunk;
+          }
+          const input = JSON.parse(body) as {
+            id?: string;
+            name?: string;
+            magnet?: string;
+            source?: SourceId;
+            sizeBytes?: number;
+          };
+
+          if (!input.id || typeof input.id !== "string") {
+            sendJson(res, 400, { error: "Missing torrent id" });
+            return;
+          }
+          if (!input.name || typeof input.name !== "string") {
+            sendJson(res, 400, { error: "Missing torrent name" });
+            return;
+          }
+          if (!input.magnet || typeof input.magnet !== "string" || !input.magnet.startsWith("magnet:?")) {
+            sendJson(res, 400, { error: "Invalid magnet URI" });
+            return;
+          }
+
+          downloadQueue.add({
+            id: input.id,
+            name: input.name,
+            magnet: input.magnet,
+            source: input.source,
+            sizeBytes: typeof input.sizeBytes === "number" ? input.sizeBytes : undefined,
+          }, downloadDir);
+          sendJson(res, 200, { ok: true });
+        } catch {
+          sendJson(res, 400, { error: "Invalid request body" });
+        }
+        return;
+      }
+
+      const downloadAction = url.pathname.match(/^\/api\/downloads\/([^/]+)\/(pause|resume|cancel)$/u);
+      if (req.method === "POST" && downloadAction) {
+        if (!isAuthorized(req, url, apiKey, webUiTrusted)) {
+          sendJson(res, 401, { error: "Unauthorized" });
+          return;
+        }
+        if (!downloadQueue) {
+          sendJson(res, 501, { error: "Built-in downloader not configured" });
+          return;
+        }
+
+        const id = decodeURIComponent(downloadAction[1] ?? "");
+        const action = downloadAction[2];
+        if (action === "pause") downloadQueue.pause(id);
+        else if (action === "resume") downloadQueue.resume(id);
+        else downloadQueue.cancel(id);
+        sendJson(res, 200, { ok: true });
         return;
       }
 

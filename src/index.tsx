@@ -4,17 +4,27 @@ import { VERSION } from "./version";
 import { App } from "./ui/App";
 
 import { createApiServer } from "./server";
+import { DownloadQueue } from "./download/queue";
+import { loadQueue, loadSeeds } from "./download/persist";
+import { loadHistory } from "./download/history";
 
 const cmd = parseCliArgs(process.argv.slice(2));
 
 if (cmd.kind === "serve") {
+  const queue = new DownloadQueue();
   const server = createApiServer({
     port: cmd.port,
     apiKey: process.env.TORLINK_API_KEY,
+    downloadQueue: queue,
   });
 
-  server
-    .start()
+  Promise.all([loadQueue(), loadHistory(), loadSeeds()])
+    .then(([items, history, seeds]) => {
+      queue.restore(items);
+      queue.restoreHistory(history);
+      queue.restoreSeeds(seeds);
+      return server.start();
+    })
     .then(() => {
       console.log(`torlink server listening on port ${server.port}`);
     })
@@ -24,6 +34,7 @@ if (cmd.kind === "serve") {
     });
 
   const stop = (): void => {
+    queue.suspend();
     void server.stop().finally(() => process.exit(0));
   };
   process.on("SIGINT", stop);

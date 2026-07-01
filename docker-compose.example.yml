@@ -19,6 +19,10 @@ services:
       # Off by default. Only enable on a LAN you trust.
       TORLINK_WEBUI_TRUSTED: "false"
 
+      # Built-in Torlink downloader target inside the container.
+      # Map this path under volumes below to choose where downloaded files land on the host.
+      TORLINK_DOWNLOAD_DIR: "/downloads"
+
       # Optional: only needed for Torlink's manual qBittorrent add endpoints.
       # Radarr/Sonarr should keep using their own download-client settings.
       # Uncomment these only when you are ready to test manual qBittorrent adds.
@@ -27,6 +31,10 @@ services:
       # TORLINK_QBIT_PASSWORD: "replace-with-qbit-password"
       # TORLINK_QBIT_CATEGORY: "torlink"
       # TORLINK_QBIT_SAVE_PATH: ""
+    volumes:
+      # Host download path for the built-in Torlink downloader.
+      # Override TORLINK_DOWNLOADS_DIR in your private compose override or .env.
+      - "${TORLINK_DOWNLOADS_DIR:-./downloads}:/downloads"
     healthcheck:
       test:
         [

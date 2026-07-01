@@ -214,6 +214,70 @@ describe("Torznab API", () => {
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: "Invalid download id" });
   });
+
+  it("adds torrents to the built-in download queue", async () => {
+    const add = vi.fn();
+    const queue = {
+      add,
+      getItems: vi.fn().mockReturnValue([]),
+      pause: vi.fn(),
+      resume: vi.fn(),
+      cancel: vi.fn(),
+    };
+    await startTestServer({ apiKey: "test-key", downloadQueue: queue, downloadDir: "/downloads" });
+
+    const res = await fetch(`${baseUrl()}/api/downloads/add?apikey=test-key`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: "abc123",
+        name: "Test Torrent",
+        magnet: "magnet:?xt=urn:btih:abc123",
+        source: "fitgirl",
+        sizeBytes: 123,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(add).toHaveBeenCalledWith({
+      id: "abc123",
+      name: "Test Torrent",
+      magnet: "magnet:?xt=urn:btih:abc123",
+      source: "fitgirl",
+      sizeBytes: 123,
+    }, "/downloads");
+  });
+
+  it("lists the built-in download queue", async () => {
+    const queueItem = {
+      id: "abc123",
+      name: "Test Torrent",
+      magnet: "magnet:?xt=urn:btih:abc123",
+      dir: "/downloads",
+      status: "downloading",
+      progress: 25,
+      totalBytes: 400,
+      downloadedBytes: 100,
+      speed: 1024,
+      peers: 3,
+      addedAt: 1700000000,
+    };
+    const queue = {
+      add: vi.fn(),
+      getItems: vi.fn().mockReturnValue([queueItem]),
+      pause: vi.fn(),
+      resume: vi.fn(),
+      cancel: vi.fn(),
+    };
+    await startTestServer({ apiKey: "test-key", downloadQueue: queue, downloadDir: "/downloads" });
+
+    const res = await fetch(`${baseUrl()}/api/downloads?apikey=test-key`);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data).toEqual({ downloadDir: "/downloads", items: [queueItem] });
+  });
 });
 
 describe("qBittorrent API", () => {

@@ -45,15 +45,19 @@
           <div class="w-2 h-2 bg-[#4EBF5F] rounded-full animate-pulse"></div>
           <span class="text-[#4EBF5F] text-xs font-medium">CONNECTED</span>
         </div>
-        <div onclick="showApiKeyModal()" class="cursor-pointer flex items-center gap-x-2 text-xs px-3 py-1.5 rounded-md border border-[#575657] hover:bg-[#7B62D9]/20">
-          <i class="fa-solid fa-key text-[#A38DF2]"></i>
-          <span id="api-key-status" class="font-mono text-[#A38DF2]">API Key</span>
-        </div>
+        <button onclick="showQueueView()" class="cursor-pointer flex items-center gap-x-2 text-xs px-3 py-1.5 rounded-md border border-[#575657] hover:bg-[#7B62D9]/20">
+          <i class="fa-solid fa-list text-[#A38DF2]"></i>
+          <span>Queue</span>
+        </button>
+        <button onclick="showSettingsView()" class="cursor-pointer flex items-center gap-x-2 text-xs px-3 py-1.5 rounded-md border border-[#575657] hover:bg-[#7B62D9]/20" title="Settings">
+          <i class="fa-solid fa-gear text-[#A38DF2]"></i>
+          <span class="hidden md:inline">Settings</span>
+        </button>
       </div>
     </div>
 
     <!-- Search -->
-    <div class="px-8 pt-8 pb-4">
+    <div id="search-controls" class="px-8 pt-8 pb-4">
       <div class="flex gap-3">
         <div class="flex-1">
           <input id="query" type="text" placeholder="Search movies, TV shows, anime..." 
@@ -76,7 +80,7 @@
     </div>
 
     <!-- Results -->
-    <div class="px-8">
+    <div id="search-view" class="px-8">
       <div id="results-header" class="hidden flex items-center justify-between mb-3 px-1">
         <div class="text-sm text-[#A38DF2]">
           <span id="result-count"></span> results
@@ -91,7 +95,7 @@
             <col style="width: 88px;">
             <col style="width: 72px;">
             <col style="width: 64px;">
-            <col style="width: 112px;">
+            <col style="width: 152px;">
           </colgroup>
           <thead class="bg-black border-b border-[#575657] text-xs">
             <tr>
@@ -114,6 +118,67 @@
         <div class="text-xs text-[#575657] mt-1">If searches say Unauthorized, click Set API Key in the top right first.</div>
       </div>
     </div>
+
+    <!-- Built-in downloader queue -->
+    <div id="queue-view" class="hidden px-8 pt-8">
+      <div class="flex items-center justify-between mb-3 px-1">
+        <div class="text-sm text-[#A38DF2]"><span id="queue-count">0</span> queued downloads</div>
+        <button onclick="showSearchView()" class="px-3 py-1.5 text-xs rounded-md border border-[#575657] hover:bg-[#7B62D9]/20">
+          <i class="fa-solid fa-arrow-left"></i> Search
+        </button>
+      </div>
+      <div class="bg-black border border-[#575657] rounded-md overflow-hidden">
+        <table class="w-full table-fixed">
+          <colgroup>
+            <col>
+            <col style="width: 92px;">
+            <col style="width: 88px;">
+            <col style="width: 72px;">
+            <col style="width: 92px;">
+          </colgroup>
+          <thead class="bg-black border-b border-[#575657] text-xs">
+            <tr>
+              <th class="text-left py-3.5 px-4 font-medium text-[#A38DF2]">Title</th>
+              <th class="text-center py-3.5 px-2 font-medium text-[#A38DF2]">Status</th>
+              <th class="text-right py-3.5 px-2 font-medium text-[#A38DF2]">Progress</th>
+              <th class="text-center py-3.5 px-2 font-medium text-[#A38DF2]">Peers</th>
+              <th class="text-center py-3.5 px-2 font-medium text-[#A38DF2]">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="queue-body" class="text-sm divide-y divide-[#575657]"></tbody>
+        </table>
+      </div>
+      <div id="queue-empty" class="hidden flex flex-col items-center justify-center py-16 text-center">
+        <i class="fa-solid fa-download text-5xl text-[#766BBF] mb-4"></i>
+        <div class="text-lg text-[#A38DF2]">No built-in downloader items yet</div>
+        <div class="text-xs text-[#575657] mt-1">Use the TL button in search results to download to the mapped /downloads path.</div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div id="settings-view" class="hidden px-8 pt-8">
+      <div class="flex items-center justify-between mb-3 px-1">
+        <div class="text-sm text-[#A38DF2]">Settings</div>
+        <button onclick="showSearchView()" class="px-3 py-1.5 text-xs rounded-md border border-[#575657] hover:bg-[#7B62D9]/20">
+          <i class="fa-solid fa-arrow-left"></i> Search
+        </button>
+      </div>
+      <div class="bg-black border border-[#575657] rounded-md p-5 max-w-2xl">
+        <label class="block text-xs text-[#A38DF2] mb-2" for="settings-api-key">Torlink API Key</label>
+        <div class="flex gap-2">
+          <input id="settings-api-key" type="password" placeholder="Paste API key for non-trusted browsers"
+                 class="flex-1 bg-black border border-[#766BBF] focus:border-[#A38DF2] transition-colors text-sm px-4 py-2 rounded-md outline-none placeholder:text-[#575657]">
+          <button onclick="saveSettingsApiKey()" class="px-4 py-2 bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black rounded-md text-xs">Save</button>
+          <button onclick="clearSettingsApiKey()" class="px-4 py-2 border border-[#575657] hover:bg-[#7B62D9]/20 rounded-md text-xs">Clear</button>
+        </div>
+        <div id="settings-api-key-status" class="text-xs text-[#575657] mt-2">API key not set locally.</div>
+        <div class="mt-6 border-t border-[#575657] pt-4">
+          <div class="text-xs text-[#A38DF2] mb-1">Built-in downloader path</div>
+          <div id="settings-download-dir" class="font-mono text-xs text-[#4EBF5F]">/downloads</div>
+          <div class="text-xs text-[#575657] mt-1">Map this container path in docker-compose to choose where files land on the host.</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Toast container -->
@@ -121,6 +186,7 @@
 
   <script>
     const API_BASE = window.location.origin;
+    let queueRefreshTimer = null;
     
     function getApiKey() {
       return localStorage.getItem('torlink_api_key') || '';
@@ -132,23 +198,58 @@
     }
     
     function updateApiKeyStatus() {
-      const el = document.getElementById('api-key-status');
       const key = getApiKey();
+      const input = document.getElementById('settings-api-key');
+      const status = document.getElementById('settings-api-key-status');
+      if (input && document.activeElement !== input) input.value = key;
+      if (!status) return;
       if (key) {
-        el.textContent = key.substring(0, 8) + '...';
-        el.style.color = '#4EBF5F';
+        status.textContent = `API key saved locally (${key.substring(0, 8)}...).`;
+        status.style.color = '#4EBF5F';
       } else {
-        el.textContent = 'Set API Key';
-        el.style.color = '#A38DF2';
+        status.textContent = 'API key not set locally.';
+        status.style.color = '#575657';
       }
     }
-    
-    function showApiKeyModal() {
-      const current = getApiKey();
-      const key = prompt('Enter your Torlink API Key:', current);
-      if (key !== null) {
-        setApiKey(key.trim());
-      }
+
+    function saveSettingsApiKey() {
+      setApiKey(document.getElementById('settings-api-key').value.trim());
+      showToast('API key saved');
+    }
+
+    function clearSettingsApiKey() {
+      setApiKey('');
+      showToast('API key cleared', 'info');
+    }
+
+    function showSearchView() {
+      clearInterval(queueRefreshTimer);
+      queueRefreshTimer = null;
+      document.getElementById('search-controls').classList.remove('hidden');
+      document.getElementById('search-view').classList.remove('hidden');
+      document.getElementById('queue-view').classList.add('hidden');
+      document.getElementById('settings-view').classList.add('hidden');
+    }
+
+    function showQueueView() {
+      document.getElementById('search-controls').classList.add('hidden');
+      document.getElementById('search-view').classList.add('hidden');
+      document.getElementById('settings-view').classList.add('hidden');
+      document.getElementById('queue-view').classList.remove('hidden');
+      refreshQueue();
+      clearInterval(queueRefreshTimer);
+      queueRefreshTimer = setInterval(refreshQueue, 2000);
+    }
+
+    function showSettingsView() {
+      clearInterval(queueRefreshTimer);
+      queueRefreshTimer = null;
+      document.getElementById('search-controls').classList.add('hidden');
+      document.getElementById('search-view').classList.add('hidden');
+      document.getElementById('queue-view').classList.add('hidden');
+      document.getElementById('settings-view').classList.remove('hidden');
+      updateApiKeyStatus();
+      refreshQueueSettings();
     }
     
     function showToast(message, type = 'success') {
@@ -277,6 +378,7 @@
         const seeders = getTorznabAttr(item, 'seeders') || '0';
         const peers = getTorznabAttr(item, 'peers') || '0';
         const magnet = getTorznabAttr(item, 'magneturl') || '';
+        const infoHash = getTorznabAttr(item, 'infohash') || item.querySelector('guid')?.textContent?.replace(/^urn:btih:/i, '') || '';
         const category = item.querySelector('category')?.textContent || '';
 
         const source = title.includes('[') ? title.split('[').pop().split(']')[0] : '—';
@@ -301,6 +403,11 @@
               <button onclick="copyMagnet('${escapeHtml(magnet)}')" 
                       class="px-1.5 py-1.5 text-[11px] rounded-md border border-[#575657] hover:bg-[#7B62D9]/20 flex items-center justify-center transition-colors" title="Copy magnet">
                 <i class="fa-solid fa-copy"></i>
+              </button>
+              <button onclick="sendToBuiltin('${escapeHtml(infoHash)}', '${escapeHtml(title)}', '${escapeHtml(magnet)}', '${escapeHtml(source)}', ${Number.isFinite(size) ? size : 0})"
+                      class="px-1.5 py-1.5 text-[11px] rounded-md bg-[#4EBF5F] text-black hover:bg-[#A38DF2] flex items-center gap-x-1 transition-colors" title="Download with Torlink">
+                <i class="fa-solid fa-bolt"></i>
+                <span>TL</span>
               </button>
               <button onclick="sendToQbit('${escapeHtml(magnet)}')" 
                       class="px-1.5 py-1.5 text-[11px] rounded-md bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black flex items-center gap-x-1 transition-colors" title="Send to qBittorrent">
@@ -348,6 +455,97 @@
       }
     }
     
+
+    async function sendToBuiltin(id, name, magnet, source, sizeBytes) {
+      if (!magnet || !id) {
+        showToast('No torrent data available', 'error');
+        return;
+      }
+      const headers = { 'Content-Type': 'application/json' };
+      const apiKey = getApiKey();
+      if (apiKey) headers['X-Api-Key'] = apiKey;
+      try {
+        const res = await fetch(`${API_BASE}/api/downloads/add`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ id, name, magnet, source, sizeBytes })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) showToast('Added to Torlink queue');
+        else showToast(data.error || 'Failed to queue download', 'error');
+      } catch {
+        showToast('Network error', 'error');
+      }
+    }
+
+    async function refreshQueueSettings() {
+      const headers = {};
+      const apiKey = getApiKey();
+      if (apiKey) headers['X-Api-Key'] = apiKey;
+      try {
+        const res = await fetch(`${API_BASE}/api/downloads`, { headers });
+        const data = await res.json();
+        if (res.ok && data.downloadDir) document.getElementById('settings-download-dir').textContent = data.downloadDir;
+      } catch {}
+    }
+
+    async function refreshQueue() {
+      const headers = {};
+      const apiKey = getApiKey();
+      if (apiKey) headers['X-Api-Key'] = apiKey;
+      try {
+        const res = await fetch(`${API_BASE}/api/downloads`, { headers });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load queue');
+        renderQueue(data.items || []);
+      } catch (err) {
+        showToast(err.message || 'Failed to load queue', 'error');
+      }
+    }
+
+    function renderQueue(items) {
+      const tbody = document.getElementById('queue-body');
+      const empty = document.getElementById('queue-empty');
+      document.getElementById('queue-count').textContent = items.length;
+      tbody.innerHTML = '';
+      empty.classList.toggle('hidden', items.length !== 0);
+      items.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'result-row border-b border-[#575657] last:border-0';
+        const isPaused = item.status === 'paused';
+        tr.innerHTML = `
+          <td class="px-4 py-4 text-sm leading-tight min-w-0"><div class="line-clamp-2">${escapeHtml(item.name || 'Unknown')}</div></td>
+          <td class="px-2 py-4 text-center text-xs text-[#A38DF2]">${escapeHtml(item.status || 'unknown')}</td>
+          <td class="px-2 py-4 text-right font-mono text-xs text-[#4EBF5F]">${item.progress ?? 0}%</td>
+          <td class="px-2 py-4 text-center font-mono text-xs text-[#A38DF2]">${item.peers ?? 0}</td>
+          <td class="px-2 py-4">
+            <div class="flex justify-center gap-x-1 whitespace-nowrap overflow-hidden">
+              <button onclick="downloadAction('${escapeHtml(item.id)}', '${isPaused ? 'resume' : 'pause'}')" class="px-1.5 py-1.5 text-[11px] rounded-md border border-[#575657] hover:bg-[#7B62D9]/20" title="${isPaused ? 'Resume' : 'Pause'}">
+                <i class="fa-solid ${isPaused ? 'fa-play' : 'fa-pause'}"></i>
+              </button>
+              <button onclick="downloadAction('${escapeHtml(item.id)}', 'cancel')" class="px-1.5 py-1.5 text-[11px] rounded-md bg-red-600 hover:bg-red-500" title="Cancel">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function downloadAction(id, action) {
+      const headers = {};
+      const apiKey = getApiKey();
+      if (apiKey) headers['X-Api-Key'] = apiKey;
+      try {
+        const res = await fetch(`${API_BASE}/api/downloads/${encodeURIComponent(id)}/${action}`, { method: 'POST', headers });
+        if (!res.ok) throw new Error('Action failed');
+        refreshQueue();
+      } catch (err) {
+        showToast(err.message || 'Action failed', 'error');
+      }
+    }
+
     async function sendToQbit(magnet) {
       if (!magnet) {
         showToast('No magnet link available', 'error');
