@@ -236,11 +236,28 @@
       }
     }
 
-    function generateSettingsApiKey() {
+    async function saveGeneratedApiKeyToServer(key) {
+      const res = await fetch(`${API_BASE}/api/config/api-key`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: key }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+    }
+
+    async function generateSettingsApiKey() {
       transientGeneratedApiKey = randomApiKey();
       localStorage.setItem(API_KEY_PRESENT_FLAG, '1');
       updateApiKeyStatus();
-      showToast('API key generated — copy it now');
+      try {
+        await saveGeneratedApiKeyToServer(transientGeneratedApiKey);
+        showToast('API key generated and activated — copy it now');
+      } catch (err) {
+        showToast(`API key generated but not activated: ${err.message || err}`, 'error');
+      }
     }
 
     async function copySettingsApiKey() {

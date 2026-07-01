@@ -98,7 +98,7 @@ function getQbitOptionsFromEnv(fetchImpl?: typeof fetch): QbitOptions | null {
 export function createApiServer(options: ServerOptions = {}): ApiServer {
   const host = options.host ?? "0.0.0.0";
   let currentPort = options.port ?? (Number(process.env.TORLINK_PORT) || 9117);
-  const apiKey = options.apiKey ?? process.env.TORLINK_API_KEY;
+  let apiKey = options.apiKey ?? process.env.TORLINK_API_KEY;
   const webUiTrusted = options.webUiTrusted ?? envFlag("TORLINK_WEBUI_TRUSTED");
   const search = options.search ?? runConcurrentSearch;
   const qbitFromEnv = !options.qbit ? getQbitOptionsFromEnv(options.qbitFetch) : null;
@@ -149,6 +149,30 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
     try {
       if (req.method === "GET" && url.pathname === "/health") {
         sendJson(res, 200, { status: "ok" });
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/api/config/api-key") {
+        if (!isAuthorized(req, url, apiKey, webUiTrusted)) {
+          sendJson(res, 401, { error: "Unauthorized" });
+          return;
+        }
+
+        try {
+          let body = "";
+          for await (const chunk of req) {
+            body += chunk;
+          }
+          const input = JSON.parse(body) as { apiKey?: string };
+          if (!input.apiKey || typeof input.apiKey !== "string" || input.apiKey.length < 16) {
+            sendJson(res, 400, { error: "Invalid API key" });
+            return;
+          }
+          apiKey = input.apiKey;
+          sendJson(res, 200, { ok: true, hasApiKey: true });
+        } catch {
+          sendJson(res, 400, { error: "Invalid request body" });
+        }
         return;
       }
 

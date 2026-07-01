@@ -541,6 +541,40 @@ describe("API server", () => {
     expect(await res.json()).toEqual({ status: "ok" });
   });
 
+  it("lets trusted web UI rotate the external Torznab API key", async () => {
+    await startTestServer({ apiKey: "old-key", webUiTrusted: true });
+
+    const update = await fetch(`${baseUrl()}/api/config/api-key`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Referer: `${baseUrl()}/`,
+      },
+      body: JSON.stringify({ apiKey: "new-key-123456789" }),
+    });
+
+    expect(update.status).toBe(200);
+    expect(await update.json()).toEqual({ ok: true, hasApiKey: true });
+
+    const oldKey = await fetch(`${baseUrl()}/api?t=caps&apikey=old-key`);
+    expect(oldKey.status).toBe(401);
+
+    const newKey = await fetch(`${baseUrl()}/api?t=caps&apikey=new-key-123456789`);
+    expect(newKey.status).toBe(200);
+  });
+
+  it("does not let unauthenticated clients rotate the external API key", async () => {
+    await startTestServer({ apiKey: "old-key", webUiTrusted: true });
+
+    const res = await fetch(`${baseUrl()}/api/config/api-key`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: "new-key-123456789" }),
+    });
+
+    expect(res.status).toBe(401);
+  });
+
   it("rejects unauthorized search requests when an API key is set", async () => {
     await startTestServer({ apiKey: "secret" });
 
