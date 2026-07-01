@@ -59,13 +59,16 @@
   "dependencies": {
     "env-paths": "^4.0.0",
     "ink": "^7.0.5",
+    "node-pty": "^1.1.0",
     "parse-torrent": "^11.0.21",
     "react": "^19.2.7",
-    "webtorrent": "^2.4.1"
+    "webtorrent": "^2.4.1",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.2",
     "@types/react": "^19.2.17",
+    "@types/ws": "^8.18.1",
     "ink-testing-library": "^4.0.0",
     "tsup": "^8.5.1",
     "tsx": "^4.22.4",

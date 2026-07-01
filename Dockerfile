@@ -5,6 +5,9 @@ FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
 # Pin pnpm to the version declared by package.json for reproducible builds.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.34.4 --activate
 
 COPY package.json pnpm-lock.yaml ./
@@ -36,4 +39,4 @@ EXPOSE 9117
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "const http=require('node:http'); const req=http.get('http://127.0.0.1:9117/health',res=>process.exit(res.statusCode===200?0:1)); req.on('error',()=>process.exit(1)); req.setTimeout(3000,()=>{req.destroy(); process.exit(1);});"
 
-CMD ["sh", "-c", "mkdir -p /downloads && chown -R torlink:torlink /downloads && exec runuser -u torlink -- node dist/index.js serve"]
+CMD ["sh", "-c", "mkdir -p /downloads && chown -R torlink:torlink /downloads && exec runuser -u torlink -- env HOME=/home/torlink XDG_CONFIG_HOME=/home/torlink/.config XDG_DATA_HOME=/home/torlink/.local/share node dist/index.js serve"]

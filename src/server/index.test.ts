@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
+import WebSocket from "ws";
 import { createApiServer, type ApiServer } from "./index";
 import { idleSearchState } from "../search/concurrent";
 import type { ConcurrentSearchState } from "../search/concurrent";
@@ -297,6 +300,47 @@ describe("Torznab API", () => {
 
     expect(res.status).toBe(200);
     expect(data).toEqual({ downloadDir: "/downloads", items: [queueItem] });
+  });
+});
+
+
+describe("Web TUI PTY websocket", () => {
+  it("bridges browser terminal input and TUI process output", async () => {
+    const stdin = new PassThrough();
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    const child = Object.assign(new EventEmitter(), {
+      stdin,
+      stdout,
+      stderr,
+      killed: false,
+      kill: vi.fn(function(this: { killed: boolean }) { this.killed = true; return true; }),
+    });
+
+    await startTestServer({
+      apiKey: "tui-test-key",
+      webUiTrusted: true,
+      spawnTui: () => child as any,
+    });
+
+    const opened = new Promise<WebSocket>((resolve, reject) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${server!.port}/api/tui-pty`, {
+        headers: { Origin: baseUrl() },
+      });
+      ws.once("open", () => resolve(ws));
+      ws.once("error", reject);
+    });
+
+    const ws = await opened;
+    const received = new Promise<Buffer>((resolve) => ws.once("message", (data) => resolve(Buffer.from(data as Buffer))));
+    stdout.write("actual TUI bytes");
+    expect((await received).toString()).toBe("actual TUI bytes");
+
+    const typed = new Promise<string>((resolve) => stdin.once("data", (chunk) => resolve(chunk.toString())));
+    ws.send(JSON.stringify({ type: "input", data: "avatar\r" }));
+    expect(await typed).toBe("avatar\r");
+
+    ws.close();
   });
 });
 

@@ -1,5 +1,10 @@
 import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from "node:http";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { EventEmitter } from "node:events";
+import { createRequire } from "node:module";
+import { PassThrough, Writable } from "node:stream";
 import { URL } from "node:url";
+import { WebSocket, WebSocketServer } from "ws";
 import { runConcurrentSearch } from "../search/concurrent";
 import type { ConcurrentSearchOptions, ConcurrentSearchState } from "../search/concurrent";
 import { CAPS_XML, decodeId, encodeId, resultsToXml } from "./torznab";
@@ -10,6 +15,8 @@ import { readFile, stat } from "node:fs/promises";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import type { QueueItem } from "../download/types";
 import type { SourceId } from "../sources/types";
+
+const nodeRequire = createRequire(import.meta.url);
 
 export interface ServerOptions {
   port?: number;
@@ -34,6 +41,7 @@ export interface ServerOptions {
     resume(id: string): void;
     cancel(id: string, opts?: { deleteFiles?: boolean }): void;
   };
+  spawnTui?: () => ChildProcessWithoutNullStreams;
 }
 
 export interface ApiServer {
@@ -65,6 +73,118 @@ function isTrustedWebUiRequest(req: IncomingMessage): boolean {
   } catch {
     return false;
   }
+}
+
+function isTrustedWebSocketRequest(req: IncomingMessage): boolean {
+  const host = req.headers.host;
+  const origin = req.headers.origin;
+  if (!host || !origin || Array.isArray(origin)) return false;
+
+  try {
+    const originUrl = new URL(origin);
+    return originUrl.host === host;
+  } catch {
+    return false;
+  }
+}
+
+function isAuthorizedWebSocket(req: IncomingMessage, url: URL, apiKey: string | undefined, webUiTrusted: boolean): boolean {
+  if (!apiKey) return true;
+  if (authKey(req, url) === apiKey) return true;
+  return webUiTrusted && isTrustedWebSocketRequest(req);
+}
+
+function defaultSpawnTui(): ChildProcessWithoutNullStreams {
+  const entry = process.argv[1];
+  const env = {
+    ...process.env,
+    TERM: process.env.TERM || "xterm-256color",
+    COLUMNS: process.env.COLUMNS || "120",
+    LINES: process.env.LINES || "40",
+    FORCE_COLOR: "1",
+  };
+
+  if (entry) {
+    try {
+      const pty = nodeRequire("node-pty") as typeof import("node-pty");
+      const term = pty.spawn(process.execPath, [entry], {
+        name: "xterm-256color",
+        cols: Number(env.COLUMNS) || 120,
+        rows: Number(env.LINES) || 40,
+        cwd: process.cwd(),
+        env,
+      });
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      const stdin = new Writable({
+        write(chunk, _encoding, callback) {
+          term.write(Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk));
+          callback();
+        },
+      });
+      const child = Object.assign(new EventEmitter(), {
+        stdin,
+        stdout,
+        stderr,
+        killed: false,
+        kill(signal?: NodeJS.Signals) {
+          this.killed = true;
+          term.kill(signal);
+          return true;
+        },
+      });
+      term.onData((data) => stdout.write(data));
+      term.onExit(({ exitCode }) => child.emit("exit", exitCode));
+      return child as unknown as ChildProcessWithoutNullStreams;
+    } catch {
+      const command = `${JSON.stringify(process.execPath)} ${JSON.stringify(entry)}`;
+      return spawn("script", ["-qfec", command, "/dev/null"], {
+        cwd: process.cwd(),
+        env,
+        stdio: "pipe",
+      });
+    }
+  }
+
+  return spawn(process.execPath, [], { cwd: process.cwd(), env, stdio: "pipe" });
+}
+
+function wireTuiSocket(ws: WebSocket, spawnTui: () => ChildProcessWithoutNullStreams): void {
+  const child = spawnTui();
+  let closed = false;
+
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    if (!child.killed) child.kill("SIGTERM");
+  };
+
+  child.stdout.on("data", (chunk) => {
+    if (ws.readyState === WebSocket.OPEN) ws.send(chunk);
+  });
+  child.stderr.on("data", (chunk) => {
+    if (ws.readyState === WebSocket.OPEN) ws.send(chunk);
+  });
+  child.on("exit", () => {
+    if (ws.readyState === WebSocket.OPEN) ws.close(1000, "TUI exited");
+  });
+
+  ws.on("message", (message) => {
+    const text = typeof message === "string" ? message : Buffer.isBuffer(message) ? message.toString("utf8") : "";
+    if (text.startsWith("{")) {
+      try {
+        const payload = JSON.parse(text) as { type?: string; data?: string };
+        if (payload.type === "input" && typeof payload.data === "string") {
+          child.stdin.write(payload.data);
+          return;
+        }
+      } catch {}
+    }
+    if (typeof message === "string") child.stdin.write(message);
+    else if (Buffer.isBuffer(message)) child.stdin.write(message);
+  });
+  ws.on("close", close);
+  ws.on("error", close);
 }
 
 function isAuthorized(req: IncomingMessage, url: URL, apiKey: string | undefined, webUiTrusted: boolean): boolean {
@@ -125,6 +245,10 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
   const qbitFromEnv = !options.qbit ? getQbitOptionsFromEnv(options.qbitFetch) : null;
   const qbit = options.qbit ?? (qbitFromEnv ? createQbitClient(qbitFromEnv) : undefined);
   const downloadQueue = options.downloadQueue;
+  const spawnTui = options.spawnTui ?? defaultSpawnTui;
+  const tuiWss = new WebSocketServer({ noServer: true });
+
+  tuiWss.on("connection", (ws) => wireTuiSocket(ws, spawnTui));
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
@@ -461,6 +585,21 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
     }
   });
 
+  server.on("upgrade", (req, socket, head) => {
+    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+    if (url.pathname !== "/api/tui-pty") return;
+
+    if (!isAuthorizedWebSocket(req, url, apiKey, webUiTrusted)) {
+      socket.write("HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+
+    tuiWss.handleUpgrade(req, socket, head, (ws) => {
+      tuiWss.emit("connection", ws, req);
+    });
+  });
+
   return {
     nodeServer: server,
     get host() {
@@ -481,6 +620,8 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
       });
     },
     async stop() {
+      for (const client of tuiWss.clients) client.terminate();
+      tuiWss.close();
       if (!server.listening) return;
       await new Promise<void>((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
