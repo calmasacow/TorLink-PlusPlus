@@ -172,7 +172,7 @@
           <button onclick="copySettingsApiKey()" class="px-4 py-2 bg-[#4EBF5F] text-black hover:bg-[#A38DF2] rounded-md text-xs">Copy</button>
           <button onclick="clearSettingsApiKey()" class="px-4 py-2 border border-[#575657] hover:bg-[#7B62D9]/20 rounded-md text-xs">Clear</button>
         </div>
-        <div id="settings-api-key-status" class="text-xs text-[#575657] mt-2">Generate a key, copy it, then put the same key in Torlink and Radarr/Sonarr. The browser UI uses trusted same-origin mode, not this key.</div>
+        <div id="settings-api-key-status" class="text-xs text-[#575657] mt-2">Generate a key, copy it, then put the same key in Radarr/Sonarr to connect to TorLnk</div>
         <div class="mt-6 border-t border-[#575657] pt-4">
           <div class="text-xs text-[#A38DF2] mb-3">qBittorrent connection</div>
           <div class="grid gap-3">
@@ -231,7 +231,7 @@
         status.style.color = '#A38DF2';
       } else {
         input.value = 'please generate key';
-        status.textContent = 'Generate a key, copy it, then put the same key in Torlink and Radarr/Sonarr. The browser UI uses trusted same-origin mode, not this key.';
+        status.textContent = 'Generate a key, copy it, then put the same key in Radarr/Sonarr to connect to TorLnk';
         status.style.color = '#575657';
       }
     }
@@ -249,7 +249,14 @@
         return;
       }
       try {
-        await navigator.clipboard.writeText(transientGeneratedApiKey);
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(transientGeneratedApiKey);
+        } else {
+          const input = document.getElementById('settings-api-key');
+          input.focus();
+          input.select();
+          if (!document.execCommand('copy')) throw new Error('copy command failed');
+        }
         showToast('API key copied');
       } catch {
         showToast('Failed to copy API key', 'error');
