@@ -401,7 +401,31 @@ describe("qBittorrent API", () => {
     expect(mockQbit.test).toHaveBeenCalledOnce();
   });
 
-  it("can use qBittorrent connection details supplied with a request", async () => {
+  it("reports server-side qBittorrent config without exposing the API key", async () => {
+    const originalEnv = process.env;
+    process.env = {
+      ...originalEnv,
+      TORLINK_QBIT_URL: "http://localhost:8080",
+      TORLINK_QBIT_USERNAME: "admin",
+      TORLINK_QBIT_PASSWORD: "stored-secret",
+    };
+    try {
+      await startTestServer();
+
+      const res = await fetch(`${baseUrl()}/api/qbit/config`);
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        configured: true,
+        url: "http://localhost:8080",
+        hasApiKey: true,
+      });
+    } finally {
+      process.env = originalEnv;
+    }
+  });
+
+  it("can use qBittorrent URL and API key supplied with a request", async () => {
     const mockFetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/auth/login")) {
         return Promise.resolve(new Response("Ok.", {
@@ -418,8 +442,7 @@ describe("qBittorrent API", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         magnet: "magnet:?xt=urn:btih:abc123",
-        qbitUrl: "http://qbit.local:8080",
-        qbitUsername: "admin",
+        qbitUrl: "http://localhost:8080",
         qbitApiKey: "request-password",
       }),
     });
@@ -427,7 +450,7 @@ describe("qBittorrent API", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
     expect(mockFetch).toHaveBeenCalledWith(
-      "http://qbit.local:8080/api/v2/auth/login",
+      "http://localhost:8080/api/v2/auth/login",
       expect.objectContaining({
         method: "POST",
         body: "username=admin&password=request-password",

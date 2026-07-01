@@ -229,6 +229,20 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
         return;
       }
 
+      if (req.method === "GET" && url.pathname === "/api/qbit/config") {
+        if (!isAuthorized(req, url, apiKey, webUiTrusted)) {
+          sendJson(res, 401, { error: "Unauthorized" });
+          return;
+        }
+
+        sendJson(res, 200, {
+          configured: Boolean(qbitFromEnv),
+          url: process.env.TORLINK_QBIT_URL || "",
+          hasApiKey: Boolean(process.env.TORLINK_QBIT_PASSWORD),
+        });
+        return;
+      }
+
       if (req.method === "POST" && url.pathname === "/api/qbit/test") {
         if (!isAuthorized(req, url, apiKey, webUiTrusted)) {
           sendJson(res, 401, { error: "Unauthorized" });
@@ -344,12 +358,11 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
           for await (const chunk of req) {
             body += chunk;
           }
-          const { magnet, category, savePath, qbitUrl, qbitUsername, qbitApiKey } = JSON.parse(body) as {
+          const { magnet, category, savePath, qbitUrl, qbitApiKey } = JSON.parse(body) as {
             magnet?: string;
             category?: string;
             savePath?: string;
             qbitUrl?: string;
-            qbitUsername?: string;
             qbitApiKey?: string;
           };
 
@@ -361,7 +374,7 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
           const requestQbit = !qbit && qbitUrl && qbitApiKey
             ? createQbitClient({
                 baseUrl: qbitUrl,
-                username: qbitUsername || "admin",
+                username: process.env.TORLINK_QBIT_USERNAME || "admin",
                 password: qbitApiKey,
                 category,
                 savePath,

@@ -176,19 +176,15 @@
         <div class="mt-6 border-t border-[#575657] pt-4">
           <div class="text-xs text-[#A38DF2] mb-3">qBittorrent connection</div>
           <div class="grid gap-3">
-            <input id="settings-qbit-url" type="text" placeholder="qBittorrent Web UI URL, e.g. http://192.168.1.200:8080"
+            <input id="settings-qbit-url" type="text" placeholder="qBittorrent Web UI URL, e.g. http://127.0.0.1:8080"
                    class="bg-black border border-[#575657] focus:border-[#A38DF2] transition-colors text-sm px-4 py-2 rounded-md outline-none placeholder:text-[#575657]">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input id="settings-qbit-username" type="text" placeholder="Username, usually admin"
-                     class="bg-black border border-[#575657] focus:border-[#A38DF2] transition-colors text-sm px-4 py-2 rounded-md outline-none placeholder:text-[#575657]">
-              <input id="settings-qbit-api-key" type="password" placeholder="API key / password"
-                     class="bg-black border border-[#575657] focus:border-[#A38DF2] transition-colors text-sm px-4 py-2 rounded-md outline-none placeholder:text-[#575657]">
-            </div>
+            <input id="settings-qbit-api-key" type="password" placeholder="API key"
+                   class="bg-black border border-[#575657] focus:border-[#A38DF2] transition-colors text-sm px-4 py-2 rounded-md outline-none placeholder:text-[#575657]">
             <div class="flex gap-2">
               <button onclick="saveQbitSettings()" class="px-4 py-2 bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black rounded-md text-xs">Save qBittorrent</button>
               <button onclick="clearQbitSettings()" class="px-4 py-2 border border-[#575657] hover:bg-[#7B62D9]/20 rounded-md text-xs">Clear qBittorrent</button>
             </div>
-            <div id="settings-qbit-status" class="text-xs text-[#575657]">If these are set, the QBT button will send them to Torlink for that request. If blank, Torlink uses private server-side compose settings.</div>
+            <div id="settings-qbit-status" class="text-xs text-[#575657]">If URL + API key are set here, QBT will use them for that request. If blank, Torlink uses private server-side compose settings.</div>
           </div>
         </div>
         <div class="mt-6 border-t border-[#575657] pt-4">
@@ -266,52 +262,59 @@
       showToast('API key cleared', 'info');
     }
 
-    function loadQbitSettings() {
-      document.getElementById('settings-qbit-url').value = localStorage.getItem('torlink_qbit_url') || '';
-      document.getElementById('settings-qbit-username').value = localStorage.getItem('torlink_qbit_username') || 'admin';
-      document.getElementById('settings-qbit-api-key').value = localStorage.getItem('torlink_qbit_api_key') || '';
-      updateQbitStatus();
+    async function loadQbitSettings() {
+      const urlInput = document.getElementById('settings-qbit-url');
+      const keyInput = document.getElementById('settings-qbit-api-key');
+      const localUrl = localStorage.getItem('torlink_qbit_url') || '';
+      const localKey = localStorage.getItem('torlink_qbit_api_key') || '';
+      let serverConfig = { configured: false, url: '', hasApiKey: false };
+      try {
+        const res = await fetch(`${API_BASE}/api/qbit/config`);
+        if (res.ok) serverConfig = await res.json();
+      } catch {}
+
+      urlInput.value = localUrl || serverConfig.url || '';
+      keyInput.value = localKey || (serverConfig.hasApiKey ? '********' : '');
+      updateQbitStatus(serverConfig);
     }
 
-    function updateQbitStatus() {
-      const url = localStorage.getItem('torlink_qbit_url') || '';
-      const key = localStorage.getItem('torlink_qbit_api_key') || '';
+    function updateQbitStatus(serverConfig = null) {
+      const url = localStorage.getItem('torlink_qbit_url') || serverConfig?.url || '';
+      const localKey = localStorage.getItem('torlink_qbit_api_key') || '';
+      const hasKey = Boolean(localKey || serverConfig?.hasApiKey);
       const status = document.getElementById('settings-qbit-status');
       if (!status) return;
-      if (url && key) {
-        status.textContent = `qBittorrent request settings saved for ${url}.`;
+      if (url && hasKey) {
+        status.textContent = `qBittorrent is configured for ${url}. API key: ********`;
         status.style.color = '#4EBF5F';
       } else {
-        status.textContent = 'If these are set, the QBT button will send them to Torlink for that request. If blank, Torlink uses private server-side compose settings.';
+        status.textContent = 'If URL + API key are set here, QBT will use them for that request. If blank, Torlink uses private server-side compose settings.';
         status.style.color = '#575657';
       }
     }
 
     function saveQbitSettings() {
-      localStorage.setItem('torlink_qbit_url', document.getElementById('settings-qbit-url').value.trim());
-      localStorage.setItem('torlink_qbit_username', document.getElementById('settings-qbit-username').value.trim() || 'admin');
-      localStorage.setItem('torlink_qbit_api_key', document.getElementById('settings-qbit-api-key').value.trim());
-      updateQbitStatus();
+      const url = document.getElementById('settings-qbit-url').value.trim();
+      const key = document.getElementById('settings-qbit-api-key').value.trim();
+      localStorage.setItem('torlink_qbit_url', url);
+      if (key && key !== '********') localStorage.setItem('torlink_qbit_api_key', key);
+      if (!key) localStorage.removeItem('torlink_qbit_api_key');
+      updateQbitStatus({ url, hasApiKey: Boolean(key || localStorage.getItem('torlink_qbit_api_key')) });
       showToast('qBittorrent settings saved');
     }
 
     function clearQbitSettings() {
       localStorage.removeItem('torlink_qbit_url');
-      localStorage.removeItem('torlink_qbit_username');
       localStorage.removeItem('torlink_qbit_api_key');
       loadQbitSettings();
-      showToast('qBittorrent settings cleared', 'info');
+      showToast('qBittorrent local override cleared', 'info');
     }
 
     function qbitSettingsPayload() {
       const qbitUrl = localStorage.getItem('torlink_qbit_url') || '';
       const qbitApiKey = localStorage.getItem('torlink_qbit_api_key') || '';
       if (!qbitUrl || !qbitApiKey) return {};
-      return {
-        qbitUrl,
-        qbitUsername: localStorage.getItem('torlink_qbit_username') || 'admin',
-        qbitApiKey,
-      };
+      return { qbitUrl, qbitApiKey };
     }
 
     function showSearchView() {
