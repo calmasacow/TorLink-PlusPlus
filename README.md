@@ -76,7 +76,7 @@ Inside the container, TorLink++ writes built-in downloader files to:
 Map that container path to the host folder you want. For example, on Unraid:
 
 ```text
-/mnt/zfs-array/downloads/torlink:/downloads
+/host-local-location/downloads:/downloads
 ```
 
 The native embedded TUI and the browser Web UI both use the same `/downloads` target when `TORLINK_DOWNLOAD_DIR=/downloads` is set.
