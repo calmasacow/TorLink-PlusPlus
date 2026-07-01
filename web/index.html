@@ -84,15 +84,15 @@
       </div>
 
       <div id="results-container" class="hidden bg-black border border-[#575657] rounded-md overflow-hidden">
-        <table class="w-full">
+        <table class="w-full table-fixed">
           <thead class="bg-black border-b border-[#575657] text-xs">
             <tr>
-              <th class="text-left py-3.5 px-6 font-medium text-[#A38DF2]">Title</th>
-              <th class="text-left py-3.5 px-4 font-medium text-[#A38DF2] w-24">Source</th>
-              <th class="text-right py-3.5 px-4 font-medium text-[#A38DF2] w-28">Size</th>
-              <th class="text-center py-3.5 px-4 font-medium text-[#A38DF2] w-20">Seeders</th>
-              <th class="text-center py-3.5 px-4 font-medium text-[#A38DF2] w-20">Peers</th>
-              <th class="text-center py-3.5 px-6 font-medium text-[#A38DF2] w-28">Actions</th>
+              <th class="text-left py-3.5 px-4 font-medium text-[#A38DF2]">Title</th>
+              <th class="text-left py-3.5 px-2 font-medium text-[#A38DF2] w-20">Source</th>
+              <th class="text-right py-3.5 px-2 font-medium text-[#A38DF2] w-24">Size</th>
+              <th class="text-center py-3.5 px-2 font-medium text-[#A38DF2] w-20">Seeders</th>
+              <th class="text-center py-3.5 px-2 font-medium text-[#A38DF2] w-16">Peers</th>
+              <th class="text-center py-3.5 px-3 font-medium text-[#A38DF2] w-32">Actions</th>
             </tr>
           </thead>
           <tbody id="results-body" class="text-sm divide-y divide-[#575657]"></tbody>
@@ -277,28 +277,28 @@
         tr.className = 'result-row border-b border-[#575657] last:border-0';
         
         tr.innerHTML = `
-          <td class="px-6 py-4 pr-8 text-sm leading-tight">
+          <td class="px-4 py-4 text-sm leading-tight min-w-0">
             <div class="line-clamp-2">${escapeHtml(title)}</div>
           </td>
-          <td class="px-4 py-4 text-xs text-[#575657] font-mono">${escapeHtml(source)}</td>
-          <td class="px-4 py-4 text-right font-mono text-xs text-[#575657]">${formatBytes(size)}</td>
-          <td class="px-4 py-4 text-center">
+          <td class="px-2 py-4 text-xs text-[#575657] font-mono truncate">${escapeHtml(source)}</td>
+          <td class="px-2 py-4 text-right font-mono text-xs text-[#575657] whitespace-nowrap">${formatBytes(size)}</td>
+          <td class="px-2 py-4 text-center">
             <span class="inline-flex items-center justify-center font-mono text-xs text-[#4EBF5F]">${seeders}</span>
           </td>
-          <td class="px-4 py-4 text-center">
+          <td class="px-2 py-4 text-center">
             <span class="inline-flex items-center justify-center font-mono text-xs text-[#A38DF2]">${peers}</span>
           </td>
-          <td class="px-6 py-4">
-            <div class="flex justify-center gap-x-1.5">
+          <td class="px-3 py-4">
+            <div class="flex justify-center gap-x-1.5 whitespace-nowrap">
               <button onclick="copyMagnet('${escapeHtml(magnet)}')" 
-                      class="px-3 py-1.5 text-xs rounded-md border border-[#575657] hover:bg-[#7B62D9]/20 flex items-center gap-x-1.5 transition-colors">
+                      class="px-2 py-1.5 text-xs rounded-md border border-[#575657] hover:bg-[#7B62D9]/20 flex items-center gap-x-1.5 transition-colors">
                 <i class="fa-solid fa-copy"></i>
-                <span class="hidden md:inline">Copy</span>
+                <span class="hidden xl:inline">Copy</span>
               </button>
               <button onclick="sendToQbit('${escapeHtml(magnet)}')" 
-                      class="px-3 py-1.5 text-xs rounded-md bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black flex items-center gap-x-1.5 transition-colors">
+                      class="px-2 py-1.5 text-xs rounded-md bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black flex items-center gap-x-1.5 transition-colors">
                 <i class="fa-solid fa-download"></i>
-                <span class="hidden md:inline">qBittorrent</span>
+                <span class="hidden xl:inline">qBittorrent</span>
               </button>
             </div>
           </td>
