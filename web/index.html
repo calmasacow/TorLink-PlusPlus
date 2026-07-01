@@ -41,9 +41,9 @@
       </div>
       
       <div class="flex items-center gap-x-4 text-sm">
-        <button onclick="showSearchView()" class="cursor-pointer flex items-center gap-x-2 text-xs px-3 py-1.5 rounded-md border border-[#575657] hover:bg-[#7B62D9]/20" title="Web TUI">
+        <button id="tui-toggle-button" onclick="toggleTuiView()" class="cursor-pointer flex items-center gap-x-2 text-xs px-3 py-1.5 rounded-md border border-[#575657] hover:bg-[#7B62D9]/20" title="Switch to Web TUI">
           <i class="fa-solid fa-terminal text-[#A38DF2]"></i>
-          <span>Web TUI</span>
+          <span id="tui-toggle-label">Web TUI</span>
         </button>
         <div class="flex items-center gap-x-2 bg-black px-3 py-1.5 rounded-md border border-[#575657]">
           <div class="w-2 h-2 bg-[#4EBF5F] rounded-full animate-pulse"></div>
@@ -57,6 +57,40 @@
           <i class="fa-solid fa-gear text-[#A38DF2]"></i>
           <span class="hidden md:inline">Settings</span>
         </button>
+      </div>
+    </div>
+
+    <!-- Web TUI -->
+    <div id="web-tui-view" class="hidden px-8 pt-8">
+      <div class="bg-black border border-[#575657] rounded-md overflow-hidden shadow-[0_0_28px_rgba(78,191,95,0.10)]">
+        <div class="flex items-center justify-between border-b border-[#575657] px-4 py-2 bg-[#050505]">
+          <div class="flex items-center gap-x-2 text-xs text-[#A38DF2]">
+            <span class="text-[#4EBF5F] font-bold">&gt;_</span>
+            <span>Torlink Web TUI</span>
+          </div>
+          <div class="text-[10px] text-[#575657]">header stays active • GUI/TUI switcher above</div>
+        </div>
+        <div class="p-4 font-mono">
+          <div class="text-xs text-[#575657] mb-3">Type a search below. Results render in a terminal-style window while the full header stays in place.</div>
+          <div class="flex flex-col md:flex-row gap-2 mb-4">
+            <label class="flex-1 flex items-center gap-x-2 bg-black border border-[#766BBF] rounded-md px-3 py-2">
+              <span class="text-[#4EBF5F]">&gt;_</span>
+              <input id="tui-query" type="text" placeholder="search movies, shows, anime..." class="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-[#575657]" onkeypress="if (event.key === 'Enter') performTuiSearch()">
+            </label>
+            <select id="tui-search-type" class="bg-black border border-[#766BBF] text-xs px-3 py-2 rounded-md outline-none text-white">
+              <option value="movie">Movies</option>
+              <option value="tvsearch">TV Shows</option>
+              <option value="search">All</option>
+            </select>
+            <button onclick="performTuiSearch()" class="px-4 py-2 bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black transition-all text-xs font-medium rounded-md">
+              Run
+            </button>
+          </div>
+          <div id="tui-output" class="min-h-[360px] max-h-[62vh] overflow-auto rounded-md border border-[#575657] bg-[#030303] p-4 text-xs leading-relaxed">
+            <div class="text-[#4EBF5F]">&gt;_ Web TUI ready.</div>
+            <div class="text-[#575657] mt-1">Enter a search and press Run.</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -367,21 +401,59 @@
       }
     }
 
+    function setTuiMode(active) {
+      const button = document.getElementById('tui-toggle-button');
+      const label = document.getElementById('tui-toggle-label');
+      if (!button || !label) return;
+      if (active) {
+        label.innerHTML = '<span class="text-[#4EBF5F] font-bold">&gt;_</span>Web GUI';
+        button.title = 'Switch to Web GUI';
+        button.classList.add('border-[#4EBF5F]');
+      } else {
+        label.textContent = 'Web TUI';
+        button.title = 'Switch to Web TUI';
+        button.classList.remove('border-[#4EBF5F]');
+      }
+    }
+
+    function hideAllViews() {
+      document.getElementById('search-controls').classList.add('hidden');
+      document.getElementById('search-view').classList.add('hidden');
+      document.getElementById('queue-view').classList.add('hidden');
+      document.getElementById('settings-view').classList.add('hidden');
+      document.getElementById('web-tui-view').classList.add('hidden');
+    }
+
     function showSearchView() {
       clearInterval(queueRefreshTimer);
       queueRefreshTimer = null;
       transientGeneratedApiKey = '';
+      hideAllViews();
+      setTuiMode(false);
       document.getElementById('search-controls').classList.remove('hidden');
       document.getElementById('search-view').classList.remove('hidden');
-      document.getElementById('queue-view').classList.add('hidden');
-      document.getElementById('settings-view').classList.add('hidden');
+    }
+
+    function showTuiView() {
+      clearInterval(queueRefreshTimer);
+      queueRefreshTimer = null;
+      transientGeneratedApiKey = '';
+      hideAllViews();
+      setTuiMode(true);
+      document.getElementById('web-tui-view').classList.remove('hidden');
+      setTimeout(() => document.getElementById('tui-query')?.focus(), 0);
+    }
+
+    function toggleTuiView() {
+      const tuiVisible = !document.getElementById('web-tui-view').classList.contains('hidden');
+      if (tuiVisible) showSearchView();
+      else showTuiView();
     }
 
     function showQueueView() {
       transientGeneratedApiKey = '';
-      document.getElementById('search-controls').classList.add('hidden');
-      document.getElementById('search-view').classList.add('hidden');
-      document.getElementById('settings-view').classList.add('hidden');
+      hideAllViews();
+      setTuiMode(false);
       document.getElementById('queue-view').classList.remove('hidden');
       refreshQueue();
       clearInterval(queueRefreshTimer);
@@ -391,13 +463,83 @@
     function showSettingsView() {
       clearInterval(queueRefreshTimer);
       queueRefreshTimer = null;
-      document.getElementById('search-controls').classList.add('hidden');
-      document.getElementById('search-view').classList.add('hidden');
-      document.getElementById('queue-view').classList.add('hidden');
+      hideAllViews();
+      setTuiMode(false);
       document.getElementById('settings-view').classList.remove('hidden');
       updateApiKeyStatus();
       loadQbitSettings();
       refreshQueueSettings();
+    }
+
+    async function performTuiSearch() {
+      const query = document.getElementById('tui-query').value.trim();
+      if (!query) return;
+      const type = document.getElementById('tui-search-type').value;
+      const output = document.getElementById('tui-output');
+      output.innerHTML = `
+        <div class="text-[#4EBF5F]">&gt;_ Searching Torlink for ${escapeHtml(query)}...</div>
+        <div class="text-[#575657] mt-1">mode=${escapeHtml(type)}</div>
+      `;
+      try {
+        const params = new URLSearchParams({ q: query, t: type, extended: '1', limit: '100' });
+        const res = await fetch(`${API_BASE}/api?${params}`);
+        if (res.status === 401) throw new Error('Unauthorized: check Torlink API key/trusted Web UI mode.');
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+        const text = await res.text();
+        const xml = new DOMParser().parseFromString(text, 'text/xml');
+        renderTuiResults(Array.from(xml.querySelectorAll('item')), query);
+      } catch (err) {
+        output.innerHTML = `
+          <div class="text-red-400">! ${escapeHtml(err.message || 'Search failed')}</div>
+          <div class="text-[#575657] mt-1">&gt;_ Fix the issue and run the search again.</div>
+        `;
+      }
+    }
+
+    function renderTuiResults(items, query) {
+      const output = document.getElementById('tui-output');
+      if (!items.length) {
+        output.innerHTML = `
+          <div class="text-[#4EBF5F]">&gt;_ Search complete: 0 results for ${escapeHtml(query)}</div>
+          <div class="text-[#575657] mt-1">Try a broader query.</div>
+        `;
+        return;
+      }
+      const rows = items.map((item, index) => {
+        const title = item.querySelector('title')?.textContent || 'Unknown';
+        const size = parseInt(item.querySelector('size')?.textContent || '0');
+        const seeders = getTorznabAttr(item, 'seeders') || '0';
+        const peers = getTorznabAttr(item, 'peers') || '0';
+        const magnet = getTorznabAttr(item, 'magneturl') || '';
+        const infoHash = getTorznabAttr(item, 'infohash') || item.querySelector('guid')?.textContent?.replace(/^urn:btih:/i, '') || '';
+        const source = title.includes('[') ? title.split('[').pop().split(']')[0] : '—';
+        return `
+          <div class="border-b border-[#222] py-2 last:border-0">
+            <div class="flex flex-col lg:flex-row lg:items-center gap-2">
+              <div class="flex-1 min-w-0">
+                <span class="text-[#4EBF5F]">${String(index + 1).padStart(2, '0')}&gt;</span>
+                <span class="text-white break-words">${escapeHtml(title)}</span>
+              </div>
+              <div class="flex items-center gap-x-3 text-[11px] text-[#575657] whitespace-nowrap">
+                <span>${escapeHtml(source)}</span>
+                <span>${formatBytes(size)}</span>
+                <span class="text-[#4EBF5F]">S:${escapeHtml(seeders)}</span>
+                <span class="text-[#A38DF2]">P:${escapeHtml(peers)}</span>
+                <button onclick="copyMagnet('${escapeHtml(magnet)}')" class="px-2 py-1 rounded border border-[#575657] hover:bg-[#7B62D9]/20">copy</button>
+                <button onclick="sendToBuiltin('${escapeHtml(infoHash)}', '${escapeHtml(title)}', '${escapeHtml(magnet)}', '${escapeHtml(source)}', ${Number.isFinite(size) ? size : 0})" class="px-2 py-1 rounded bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black">TL</button>
+                <button onclick="sendToQbit('${escapeHtml(magnet)}')" class="px-2 py-1 rounded bg-[#4EBF5F] text-black hover:bg-[#A38DF2]">QBT</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      output.innerHTML = `
+        <div class="text-[#4EBF5F] mb-2">&gt;_ Search complete: ${items.length} results for ${escapeHtml(query)}</div>
+        ${rows}
+      `;
     }
     
     function showToast(message, type = 'success') {
