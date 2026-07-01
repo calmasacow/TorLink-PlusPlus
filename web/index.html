@@ -15,7 +15,7 @@
       --tl-purple-light: #A38DF2;
       --tl-purple-muted: #766BBF;
       --tl-green: #4EBF5F;
-      --tl-black: #000000;
+      --tl-black: #0c0c0c;
       --tl-gray: #575657;
       --tl-white: #FFFFFF;
     }
@@ -29,9 +29,104 @@
     .loading-progress { animation: loadingPulse 1s ease-in-out infinite; }
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes loadingPulse { 0% { transform: translateX(-100%); } 50% { transform: translateX(20%); } 100% { transform: translateX(100%); } }
+
+    .tui-shell {
+      min-height: calc(100vh - 89px);
+      background: #0c0c0c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8vh 1.5rem 12vh;
+    }
+    .tui-stage {
+      width: min(860px, 100%);
+      text-align: center;
+    }
+    .tui-logo-large {
+      width: min(360px, 72vw);
+      height: auto;
+      margin: 0 auto 2.2rem;
+      image-rendering: auto;
+    }
+    .tui-tagline {
+      color: #d8d4e8;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      text-shadow: 0 0 12px rgba(163, 141, 242, 0.18);
+    }
+    .tui-categories {
+      color: #6f6b73;
+      font-size: 19px;
+      font-weight: 700;
+      margin-top: 0.35rem;
+      word-spacing: 1rem;
+    }
+    .tui-fieldset {
+      margin: 2.35rem auto 0;
+      border: 2px solid #a38df2;
+      border-radius: 6px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      position: relative;
+      box-shadow: 0 0 0 1px rgba(123, 98, 217, 0.18), 0 0 18px rgba(163, 141, 242, 0.10);
+      background: #0c0c0c;
+      text-align: left;
+    }
+    .tui-fieldset legend {
+      color: #a38df2;
+      font-size: 18px;
+      font-weight: 800;
+      padding: 0 0.65rem;
+      margin-left: 1.35rem;
+    }
+    .tui-prompt {
+      color: #a38df2;
+      font-size: 25px;
+      font-weight: 800;
+      padding-left: 1.15rem;
+      padding-right: 0.75rem;
+      line-height: 1;
+    }
+    .tui-input {
+      flex: 1;
+      min-width: 0;
+      background: transparent;
+      border: 0;
+      outline: none;
+      color: #e7e4ee;
+      font-size: 22px;
+      font-weight: 700;
+      caret-color: #e7e4ee;
+      padding-right: 1rem;
+    }
+    .tui-input::placeholder { color: #67636c; opacity: 1; }
+    .tui-help {
+      margin-top: 2.15rem;
+      color: #6f6b73;
+      font-size: 18px;
+      font-weight: 800;
+      word-spacing: 0.55rem;
+    }
+    .tui-results {
+      display: none;
+      margin-top: 1.75rem;
+      text-align: left;
+      border: 1px solid #575657;
+      border-radius: 6px;
+      background: #080808;
+      min-height: 220px;
+      max-height: 42vh;
+      overflow: auto;
+      padding: 1rem;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .tui-results.has-output { display: block; }
   </style>
 </head>
-<body class="bg-black text-white">
+<body class="text-white">
   <div class="max-w-7xl mx-auto">
     <!-- Header -->
     <div class="flex items-center justify-between px-8 py-5 border-b border-[#575657]">
@@ -61,36 +156,18 @@
     </div>
 
     <!-- Web TUI -->
-    <div id="web-tui-view" class="hidden px-8 pt-8">
-      <div class="bg-black border border-[#575657] rounded-md overflow-hidden shadow-[0_0_28px_rgba(78,191,95,0.10)]">
-        <div class="flex items-center justify-between border-b border-[#575657] px-4 py-2 bg-[#050505]">
-          <div class="flex items-center gap-x-2 text-xs text-[#A38DF2]">
-            <span class="text-[#4EBF5F] font-bold">&gt;_</span>
-            <span>Torlink Web TUI</span>
-          </div>
-          <div class="text-[10px] text-[#575657]">header stays active • GUI/TUI switcher above</div>
-        </div>
-        <div class="p-4 font-mono">
-          <div class="text-xs text-[#575657] mb-3">Type a search below. Results render in a terminal-style window while the full header stays in place.</div>
-          <div class="flex flex-col md:flex-row gap-2 mb-4">
-            <label class="flex-1 flex items-center gap-x-2 bg-black border border-[#766BBF] rounded-md px-3 py-2">
-              <span class="text-[#4EBF5F]">&gt;_</span>
-              <input id="tui-query" type="text" placeholder="search movies, shows, anime..." class="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-[#575657]" onkeypress="if (event.key === 'Enter') performTuiSearch()">
-            </label>
-            <select id="tui-search-type" class="bg-black border border-[#766BBF] text-xs px-3 py-2 rounded-md outline-none text-white">
-              <option value="movie">Movies</option>
-              <option value="tvsearch">TV Shows</option>
-              <option value="search">All</option>
-            </select>
-            <button onclick="performTuiSearch()" class="px-4 py-2 bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black transition-all text-xs font-medium rounded-md">
-              Run
-            </button>
-          </div>
-          <div id="tui-output" class="min-h-[360px] max-h-[62vh] overflow-auto rounded-md border border-[#575657] bg-[#030303] p-4 text-xs leading-relaxed">
-            <div class="text-[#4EBF5F]">&gt;_ Web TUI ready.</div>
-            <div class="text-[#575657] mt-1">Enter a search and press Run.</div>
-          </div>
-        </div>
+    <div id="web-tui-view" class="hidden tui-shell">
+      <div class="tui-stage font-mono">
+        <img src="/torlink-logo.jpg" alt="Torlink" class="tui-logo-large">
+        <div class="tui-tagline">A curated, terminal-native torrent downloader.</div>
+        <div class="tui-categories">games · movies · tv · anime</div>
+        <fieldset class="tui-fieldset">
+          <legend>Search</legend>
+          <span class="tui-prompt">›</span>
+          <input id="tui-query" type="text" placeholder="Search or paste a magnet link…" class="tui-input" onkeypress="if (event.key === 'Enter') performTuiSearch()">
+        </fieldset>
+        <div class="tui-help">↵ search · empty ↵ browse · ^c quit</div>
+        <div id="tui-output" class="tui-results"></div>
       </div>
     </div>
 
@@ -404,12 +481,15 @@
     function setTuiMode(active) {
       const button = document.getElementById('tui-toggle-button');
       const label = document.getElementById('tui-toggle-label');
+      const icon = button?.querySelector('i');
       if (!button || !label) return;
       if (active) {
+        if (icon) icon.classList.add('hidden');
         label.innerHTML = '<span class="text-[#4EBF5F] font-bold">&gt;_</span>Web GUI';
         button.title = 'Switch to Web GUI';
         button.classList.add('border-[#4EBF5F]');
       } else {
+        if (icon) icon.classList.remove('hidden');
         label.textContent = 'Web TUI';
         button.title = 'Switch to Web TUI';
         button.classList.remove('border-[#4EBF5F]');
@@ -476,8 +556,9 @@
       if (!query) return;
       const type = document.getElementById('tui-search-type').value;
       const output = document.getElementById('tui-output');
+      output.classList.add('has-output');
       output.innerHTML = `
-        <div class="text-[#4EBF5F]">&gt;_ Searching Torlink for ${escapeHtml(query)}...</div>
+        <div class="text-[#4EBF5F]">› Searching Torlink for ${escapeHtml(query)}...</div>
         <div class="text-[#575657] mt-1">mode=${escapeHtml(type)}</div>
       `;
       try {
@@ -494,16 +575,17 @@
       } catch (err) {
         output.innerHTML = `
           <div class="text-red-400">! ${escapeHtml(err.message || 'Search failed')}</div>
-          <div class="text-[#575657] mt-1">&gt;_ Fix the issue and run the search again.</div>
+          <div class="text-[#575657] mt-1">› Fix the issue and run the search again.</div>
         `;
       }
     }
 
     function renderTuiResults(items, query) {
       const output = document.getElementById('tui-output');
+      output.classList.add('has-output');
       if (!items.length) {
         output.innerHTML = `
-          <div class="text-[#4EBF5F]">&gt;_ Search complete: 0 results for ${escapeHtml(query)}</div>
+          <div class="text-[#4EBF5F]">› Search complete: 0 results for ${escapeHtml(query)}</div>
           <div class="text-[#575657] mt-1">Try a broader query.</div>
         `;
         return;
@@ -537,7 +619,7 @@
         `;
       }).join('');
       output.innerHTML = `
-        <div class="text-[#4EBF5F] mb-2">&gt;_ Search complete: ${items.length} results for ${escapeHtml(query)}</div>
+        <div class="text-[#4EBF5F] mb-2">› Search complete: ${items.length} results for ${escapeHtml(query)}</div>
         ${rows}
       `;
     }
