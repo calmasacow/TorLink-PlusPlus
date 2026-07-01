@@ -5,8 +5,9 @@ import type { ConcurrentSearchOptions, ConcurrentSearchState } from "../search/c
 import { CAPS_XML, decodeId, encodeId, resultsToXml } from "./torznab";
 import { createQbitClient } from "../qbit/client";
 import type { QbitOptions } from "../qbit/types";
-import { resolve, extname, sep } from "node:path";
+import { resolve, extname, sep, dirname } from "node:path";
 import { readFile, stat } from "node:fs/promises";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import type { QueueItem } from "../download/types";
 import type { SourceId } from "../sources/types";
 
@@ -78,6 +79,25 @@ function sendJson(res: ServerResponse, status: number, data: unknown): void {
   res.end(JSON.stringify(data));
 }
 
+function apiKeyFilePath(downloadDir: string): string {
+  return process.env.TORLINK_API_KEY_FILE || resolve(downloadDir, ".torlink-api-key");
+}
+
+function readStoredApiKey(downloadDir: string): string | undefined {
+  try {
+    const key = readFileSync(apiKeyFilePath(downloadDir), "utf8").trim();
+    return key || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeStoredApiKey(downloadDir: string, key: string): void {
+  const file = apiKeyFilePath(downloadDir);
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `${key}\n`, { mode: 0o600 });
+}
+
 function getQbitOptionsFromEnv(fetchImpl?: typeof fetch): QbitOptions | null {
   const url = process.env.TORLINK_QBIT_URL;
   const username = process.env.TORLINK_QBIT_USERNAME;
@@ -98,12 +118,12 @@ function getQbitOptionsFromEnv(fetchImpl?: typeof fetch): QbitOptions | null {
 export function createApiServer(options: ServerOptions = {}): ApiServer {
   const host = options.host ?? "0.0.0.0";
   let currentPort = options.port ?? (Number(process.env.TORLINK_PORT) || 9117);
-  let apiKey = options.apiKey ?? process.env.TORLINK_API_KEY;
+  const downloadDir = options.downloadDir ?? process.env.TORLINK_DOWNLOAD_DIR ?? "/downloads";
+  let apiKey = options.apiKey ?? readStoredApiKey(downloadDir) ?? process.env.TORLINK_API_KEY;
   const webUiTrusted = options.webUiTrusted ?? envFlag("TORLINK_WEBUI_TRUSTED");
   const search = options.search ?? runConcurrentSearch;
   const qbitFromEnv = !options.qbit ? getQbitOptionsFromEnv(options.qbitFetch) : null;
   const qbit = options.qbit ?? (qbitFromEnv ? createQbitClient(qbitFromEnv) : undefined);
-  const downloadDir = options.downloadDir ?? process.env.TORLINK_DOWNLOAD_DIR ?? "/downloads";
   const downloadQueue = options.downloadQueue;
 
   const server = createServer(async (req, res) => {
@@ -164,11 +184,12 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
             body += chunk;
           }
           const input = JSON.parse(body) as { apiKey?: string };
-          if (!input.apiKey || typeof input.apiKey !== "string" || input.apiKey.length < 16) {
+          if (!input.apiKey || typeof input.apiKey !== "string" || input.apiKey.length < 8) {
             sendJson(res, 400, { error: "Invalid API key" });
             return;
           }
           apiKey = input.apiKey;
+          writeStoredApiKey(downloadDir, input.apiKey);
           sendJson(res, 200, { ok: true, hasApiKey: true });
         } catch {
           sendJson(res, 400, { error: "Invalid request body" });

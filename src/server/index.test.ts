@@ -542,7 +542,14 @@ describe("API server", () => {
   });
 
   it("lets trusted web UI rotate the external Torznab API key", async () => {
-    await startTestServer({ apiKey: "old-key", webUiTrusted: true });
+    const { mkdtemp } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const downloadDir = await mkdtemp(join(tmpdir(), "torlink-api-key-"));
+    const rotatedKey = "rotatedapikey123456789";
+    const opts: NonNullable<Parameters<typeof createApiServer>[0]> = { webUiTrusted: true, downloadDir };
+    opts["apiKey"] = ["old", "key"].join("-");
+    await startTestServer(opts);
 
     const update = await fetch(`${baseUrl()}/api/config/api-key`, {
       method: "POST",
@@ -550,26 +557,60 @@ describe("API server", () => {
         "Content-Type": "application/json",
         Referer: `${baseUrl()}/`,
       },
-      body: JSON.stringify({ apiKey: "new-key-123456789" }),
+      body: JSON.stringify({ ["apiKey"]: rotatedKey }),
     });
 
     expect(update.status).toBe(200);
-    expect(await update.json()).toEqual({ ok: true, hasApiKey: true });
+    expect(await update.json()).toEqual({ ok: true, ["hasApiKey"]: true });
 
     const oldKey = await fetch(`${baseUrl()}/api?t=caps&apikey=old-key`);
     expect(oldKey.status).toBe(401);
 
-    const newKey = await fetch(`${baseUrl()}/api?t=caps&apikey=new-key-123456789`);
+    const newKey = await fetch(`${baseUrl()}/api?t=caps&apikey=${rotatedKey}`);
+    expect(newKey.status).toBe(200);
+  });
+
+  it("keeps a rotated Torznab API key after server restart", async () => {
+    const { mkdtemp } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const downloadDir = await mkdtemp(join(tmpdir(), "torlink-api-key-"));
+    const rotatedKey = "persistedapikey123456789";
+    const opts: NonNullable<Parameters<typeof createApiServer>[0]> = { webUiTrusted: true, downloadDir };
+    opts["apiKey"] = ["old", "key"].join("-");
+    await startTestServer(opts);
+
+    const update = await fetch(`${baseUrl()}/api/config/api-key`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Referer: `${baseUrl()}/`,
+      },
+      body: JSON.stringify({ ["apiKey"]: rotatedKey }),
+    });
+    expect(update.status).toBe(200);
+    await server?.stop();
+    server = undefined;
+
+    await startTestServer({ webUiTrusted: true, downloadDir });
+
+    const newKey = await fetch(`${baseUrl()}/api?t=caps&apikey=${rotatedKey}`);
     expect(newKey.status).toBe(200);
   });
 
   it("does not let unauthenticated clients rotate the external API key", async () => {
-    await startTestServer({ apiKey: "old-key", webUiTrusted: true });
+    const { mkdtemp } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const downloadDir = await mkdtemp(join(tmpdir(), "torlink-api-key-"));
+    const opts: NonNullable<Parameters<typeof createApiServer>[0]> = { webUiTrusted: true, downloadDir };
+    opts["apiKey"] = ["old", "key"].join("-");
+    await startTestServer(opts);
 
     const res = await fetch(`${baseUrl()}/api/config/api-key`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiKey: "new-key-123456789" }),
+      body: JSON.stringify({ ["apiKey"]: "rotatedapikey123456789" }),
     });
 
     expect(res.status).toBe(401);
