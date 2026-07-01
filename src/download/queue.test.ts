@@ -61,3 +61,28 @@ describe("strayDownload (missing-file safety-net)", () => {
     expect(strayDownload({ total: 0, progress: 0, speed: 0 })).toBe(false);
   });
 });
+
+
+describe("safeDeleteAssociatedFiles", () => {
+  it("deletes only paths associated with a torrent inside its download directory", async () => {
+    const { mkdtemp, writeFile, mkdir, stat } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { safeDeleteAssociatedFiles } = await import("./engine");
+
+    const root = await mkdtemp(join(tmpdir(), "torlink-delete-"));
+    await mkdir(join(root, "Torrent Name"));
+    await writeFile(join(root, "Torrent Name", "file.mkv"), "data");
+    const outside = join(root, "..", "outside.txt");
+    await writeFile(outside, "keep");
+
+    const deleted = safeDeleteAssociatedFiles(root, "Torrent Name", [
+      "Torrent Name/file.mkv",
+      "../outside.txt",
+    ]);
+
+    expect(deleted).toContain(join(root, "Torrent Name", "file.mkv"));
+    await expect(stat(join(root, "Torrent Name", "file.mkv"))).rejects.toThrow();
+    await expect(stat(outside)).resolves.toBeTruthy();
+  });
+});

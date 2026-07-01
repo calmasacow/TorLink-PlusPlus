@@ -31,7 +31,7 @@ export interface ServerOptions {
     getItems(): QueueItem[];
     pause(id: string): void;
     resume(id: string): void;
-    cancel(id: string): void;
+    cancel(id: string, opts?: { deleteFiles?: boolean }): void;
   };
 }
 
@@ -328,7 +328,7 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
         const action = downloadAction[2];
         if (action === "pause") downloadQueue.pause(id);
         else if (action === "resume") downloadQueue.resume(id);
-        else downloadQueue.cancel(id);
+        else downloadQueue.cancel(id, { deleteFiles: url.searchParams.get("deleteFiles") === "true" });
         sendJson(res, 200, { ok: true });
         return;
       }
@@ -344,10 +344,13 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
           for await (const chunk of req) {
             body += chunk;
           }
-          const { magnet, category, savePath } = JSON.parse(body) as {
+          const { magnet, category, savePath, qbitUrl, qbitUsername, qbitApiKey } = JSON.parse(body) as {
             magnet?: string;
             category?: string;
             savePath?: string;
+            qbitUrl?: string;
+            qbitUsername?: string;
+            qbitApiKey?: string;
           };
 
           if (!magnet || typeof magnet !== "string" || !magnet.startsWith("magnet:?")) {
@@ -355,12 +358,23 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
             return;
           }
 
-          if (!qbit) {
+          const requestQbit = !qbit && qbitUrl && qbitApiKey
+            ? createQbitClient({
+                baseUrl: qbitUrl,
+                username: qbitUsername || "admin",
+                password: qbitApiKey,
+                category,
+                savePath,
+                fetch: options.qbitFetch,
+              })
+            : qbit;
+
+          if (!requestQbit) {
             sendJson(res, 501, { error: "qBittorrent not configured" });
             return;
           }
 
-          const result = await qbit.add({ magnet, category, savePath });
+          const result = await requestQbit.add({ magnet, category, savePath });
           sendJson(res, result.ok ? 200 : 400, result);
         } catch {
           sendJson(res, 400, {

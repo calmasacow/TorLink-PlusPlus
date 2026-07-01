@@ -1,4 +1,6 @@
 import WebTorrent, { type Torrent } from "webtorrent";
+import { rmSync } from "node:fs";
+import { resolve, sep } from "node:path";
 
 export interface TorrentProgress {
   progress: number;
@@ -30,6 +32,27 @@ export interface AddHandlers {
 
 function message(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
+}
+
+function insideDir(baseDir: string, candidate: string): boolean {
+  const base = resolve(baseDir);
+  const target = resolve(candidate);
+  return target === base || target.startsWith(`${base}${sep}`);
+}
+
+export function safeDeleteAssociatedFiles(dir: string, name: string, files: string[] = []): string[] {
+  const deleted: string[] = [];
+  const candidates = files.length > 0 ? files : [name];
+  for (const rel of candidates) {
+    if (!rel) continue;
+    const target = resolve(dir, rel);
+    if (!insideDir(dir, target)) continue;
+    try {
+      rmSync(target, { force: true, recursive: true });
+      deleted.push(target);
+    } catch {}
+  }
+  return deleted;
 }
 
 export class TorrentEngine {
@@ -109,13 +132,17 @@ export class TorrentEngine {
     };
   }
 
-  remove(id: string): void {
+  remove(id: string, opts: { deleteFiles?: boolean; dir?: string; name?: string } = {}): void {
     const t = this.torrents.get(id);
     this.torrents.delete(id);
+    const files = t?.files?.map((file) => file.path).filter(Boolean) ?? [];
     if (t) {
       try {
         t.destroy();
       } catch {}
+    }
+    if (opts.deleteFiles && opts.dir) {
+      safeDeleteAssociatedFiles(opts.dir, opts.name ?? "", files);
     }
   }
 

@@ -298,9 +298,10 @@ export class DownloadQueue extends EventEmitter {
     else if (it.status === "paused") this.resume(id);
   }
 
-  cancel(id: string): void {
-    if (!this.items.has(id)) return;
-    this.engine.remove(id);
+  cancel(id: string, opts: { deleteFiles?: boolean } = {}): void {
+    const item = this.items.get(id);
+    if (!item) return;
+    this.engine.remove(id, { deleteFiles: opts.deleteFiles, dir: item.dir, name: item.name });
     this.items.delete(id);
     deleteTorrentMeta(id);
     this.changed();

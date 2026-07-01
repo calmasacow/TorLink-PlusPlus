@@ -249,6 +249,26 @@ describe("Torznab API", () => {
     }, "/downloads");
   });
 
+  it("passes deleteFiles through when canceling a built-in download", async () => {
+    const cancel = vi.fn();
+    const queue = {
+      add: vi.fn(),
+      getItems: vi.fn().mockReturnValue([]),
+      pause: vi.fn(),
+      resume: vi.fn(),
+      cancel,
+    };
+    await startTestServer({ apiKey: "test-key", downloadQueue: queue, downloadDir: "/downloads" });
+
+    const res = await fetch(`${baseUrl()}/api/downloads/abc123/cancel?apikey=test-key&deleteFiles=true`, {
+      method: "POST",
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(cancel).toHaveBeenCalledWith("abc123", { deleteFiles: true });
+  });
+
   it("lists the built-in download queue", async () => {
     const queueItem = {
       id: "abc123",
@@ -379,6 +399,40 @@ describe("qBittorrent API", () => {
 
     expect(res.status).toBe(200);
     expect(mockQbit.test).toHaveBeenCalledOnce();
+  });
+
+  it("can use qBittorrent connection details supplied with a request", async () => {
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/auth/login")) {
+        return Promise.resolve(new Response("Ok.", {
+          status: 200,
+          headers: new Headers({ "Set-Cookie": "SID=request" }),
+        }));
+      }
+      return Promise.resolve(new Response("Ok.", { status: 200 }));
+    });
+    await startTestServer({ qbitFetch: mockFetch });
+
+    const res = await fetch(`${baseUrl()}/api/qbit/add`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        magnet: "magnet:?xt=urn:btih:abc123",
+        qbitUrl: "http://qbit.local:8080",
+        qbitUsername: "admin",
+        qbitApiKey: "request-password",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://qbit.local:8080/api/v2/auth/login",
+      expect.objectContaining({
+        method: "POST",
+        body: "username=admin&password=request-password",
+      }),
+    );
   });
 
   it("adds torrent to qBittorrent", async () => {
