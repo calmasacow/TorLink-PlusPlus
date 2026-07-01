@@ -85,14 +85,22 @@
 
       <div id="results-container" class="hidden bg-black border border-[#575657] rounded-md overflow-hidden">
         <table class="w-full table-fixed">
+          <colgroup>
+            <col>
+            <col style="width: 72px;">
+            <col style="width: 88px;">
+            <col style="width: 72px;">
+            <col style="width: 64px;">
+            <col style="width: 112px;">
+          </colgroup>
           <thead class="bg-black border-b border-[#575657] text-xs">
             <tr>
               <th class="text-left py-3.5 px-4 font-medium text-[#A38DF2]">Title</th>
-              <th class="text-left py-3.5 px-2 font-medium text-[#A38DF2] w-20">Source</th>
-              <th class="text-right py-3.5 px-2 font-medium text-[#A38DF2] w-24">Size</th>
-              <th class="text-center py-3.5 px-2 font-medium text-[#A38DF2] w-20">Seeders</th>
-              <th class="text-center py-3.5 px-2 font-medium text-[#A38DF2] w-16">Peers</th>
-              <th class="text-center py-3.5 px-3 font-medium text-[#A38DF2] w-32">Actions</th>
+              <th class="text-left py-3.5 px-2 font-medium text-[#A38DF2]">Source</th>
+              <th class="text-right py-3.5 px-2 font-medium text-[#A38DF2]">Size</th>
+              <th class="text-center py-3.5 px-2 font-medium text-[#A38DF2]">Seeders</th>
+              <th class="text-center py-3.5 px-2 font-medium text-[#A38DF2]">Peers</th>
+              <th class="text-center py-3.5 px-2 font-medium text-[#A38DF2]">Actions</th>
             </tr>
           </thead>
           <tbody id="results-body" class="text-sm divide-y divide-[#575657]"></tbody>
@@ -288,17 +296,16 @@
           <td class="px-2 py-4 text-center">
             <span class="inline-flex items-center justify-center font-mono text-xs text-[#A38DF2]">${peers}</span>
           </td>
-          <td class="px-3 py-4">
-            <div class="flex justify-center gap-x-1.5 whitespace-nowrap">
+          <td class="px-1 py-4 overflow-hidden">
+            <div class="flex w-full justify-center gap-x-1 whitespace-nowrap overflow-hidden">
               <button onclick="copyMagnet('${escapeHtml(magnet)}')" 
-                      class="px-2 py-1.5 text-xs rounded-md border border-[#575657] hover:bg-[#7B62D9]/20 flex items-center gap-x-1.5 transition-colors">
+                      class="px-1.5 py-1.5 text-[11px] rounded-md border border-[#575657] hover:bg-[#7B62D9]/20 flex items-center justify-center transition-colors" title="Copy magnet">
                 <i class="fa-solid fa-copy"></i>
-                <span class="hidden xl:inline">Copy</span>
               </button>
               <button onclick="sendToQbit('${escapeHtml(magnet)}')" 
-                      class="px-2 py-1.5 text-xs rounded-md bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black flex items-center gap-x-1.5 transition-colors">
+                      class="px-1.5 py-1.5 text-[11px] rounded-md bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black flex items-center gap-x-1 transition-colors" title="Send to qBittorrent">
                 <i class="fa-solid fa-download"></i>
-                <span class="hidden xl:inline">qBittorrent</span>
+                <span>QBT</span>
               </button>
             </div>
           </td>
