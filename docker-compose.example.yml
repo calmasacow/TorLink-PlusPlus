@@ -2,7 +2,7 @@ services:
   torlink:
     build:
       context: .
-    image: torlink:latest
+    image: calmasacow/torlink-plusplus:latest
     container_name: torlink
     restart: unless-stopped
     ports:

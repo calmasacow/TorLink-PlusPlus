@@ -37,18 +37,21 @@ The original Torlink is a polished terminal-native torrent finder/downloader. To
 
 ## Quick start with Docker Compose
 
-Copy the example compose file and set your private overrides:
+Use the published Docker Hub image:
 
 ```yaml
 services:
   torlink:
-    image: torlink:latest
+    image: calmasacow/torlink-plusplus:latest
+    container_name: torlink
+    restart: unless-stopped
     ports:
       - "19117:9117"
     environment:
       TORLINK_API_KEY: "replace-with-a-long-random-api-key"
       TORLINK_WEBUI_TRUSTED: "true"
       TORLINK_DOWNLOAD_DIR: "/downloads"
+      TORLINK_TORZNAB_EMPTY_QUERY: "avatar"
     volumes:
       - /path/on/host/torlink-downloads:/downloads
 ```
@@ -64,6 +67,16 @@ For Radarr/Sonarr, use the Torznab URL:
 ```text
 http://YOUR_SERVER:19117/api?apikey=YOUR_API_KEY
 ```
+
+## Docker Hub image
+
+Docker Hub image:
+
+```text
+calmasacow/torlink-plusplus:latest
+```
+
+Versioned tags are published from Git tags such as `v0.1.0`.
 
 ## Download path
 

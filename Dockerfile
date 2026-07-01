@@ -21,6 +21,13 @@ RUN pnpm run build && pnpm prune --prod
 
 FROM node:22-bookworm-slim AS runtime
 
+LABEL org.opencontainers.image.title="TorLink++" \
+  org.opencontainers.image.description="Torlink fork with Torznab API, Web GUI, qBittorrent handoff, and embedded native TUI" \
+  org.opencontainers.image.source="https://github.com/calmasacow/TorLink-PlusPlus" \
+  org.opencontainers.image.url="https://github.com/calmasacow/TorLink-PlusPlus" \
+  org.opencontainers.image.licenses="MIT" \
+  org.opencontainers.image.authors="Original Torlink by bairon; TorLink++ fork by calmasacow"
+
 ENV NODE_ENV=production
 WORKDIR /app
 
