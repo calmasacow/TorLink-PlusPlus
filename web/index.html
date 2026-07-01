@@ -182,6 +182,7 @@
                    class="bg-black border border-[#575657] focus:border-[#A38DF2] transition-colors text-sm px-4 py-2 rounded-md outline-none placeholder:text-[#575657]">
             <div class="flex gap-2">
               <button onclick="saveQbitSettings()" class="px-4 py-2 bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black rounded-md text-xs">Save qBittorrent</button>
+              <button onclick="testQbitSettings()" class="px-4 py-2 bg-[#4EBF5F] text-black hover:bg-[#A38DF2] rounded-md text-xs">Test qBittorrent</button>
               <button onclick="clearQbitSettings()" class="px-4 py-2 border border-[#575657] hover:bg-[#7B62D9]/20 rounded-md text-xs">Clear qBittorrent</button>
             </div>
             <div id="settings-qbit-status" class="text-xs text-[#575657]">If URL + API key are set here, QBT will use them for that request. If blank, Torlink uses private server-side compose settings.</div>
@@ -315,6 +316,27 @@
       const qbitApiKey = localStorage.getItem('torlink_qbit_api_key') || '';
       if (!qbitUrl || !qbitApiKey) return {};
       return { qbitUrl, qbitApiKey };
+    }
+
+    async function testQbitSettings() {
+      saveQbitSettings();
+      const payload = qbitSettingsPayload();
+      try {
+        const res = await fetch(`${API_BASE}/api/qbit/test`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        showToast('qBittorrent connection OK');
+        updateQbitStatus({
+          url: payload.qbitUrl || document.getElementById('settings-qbit-url').value.trim(),
+          hasApiKey: true,
+        });
+      } catch (err) {
+        showToast(`qBittorrent test failed: ${err.message || err}`, 'error');
+      }
     }
 
     function showSearchView() {

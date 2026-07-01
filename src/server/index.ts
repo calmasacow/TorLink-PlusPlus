@@ -249,13 +249,26 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
           return;
         }
 
-        if (!qbit) {
-          sendJson(res, 501, { error: "qBittorrent not configured" });
-          return;
-        }
-
         try {
-          const result = await qbit.test();
+          let body = "";
+          for await (const chunk of req) {
+            body += chunk;
+          }
+          const input = body ? JSON.parse(body) as { qbitUrl?: string; qbitApiKey?: string } : {};
+          const requestQbit = input.qbitUrl && input.qbitApiKey
+            ? createQbitClient({
+                baseUrl: input.qbitUrl,
+                apiKey: input.qbitApiKey,
+                fetch: options.qbitFetch,
+              })
+            : qbit;
+
+          if (!requestQbit) {
+            sendJson(res, 501, { error: "qBittorrent not configured" });
+            return;
+          }
+
+          const result = await requestQbit.test();
           sendJson(res, result.ok ? 200 : 400, result);
         } catch {
           sendJson(res, 500, { error: "Internal server error" });
@@ -374,8 +387,7 @@ export function createApiServer(options: ServerOptions = {}): ApiServer {
           const requestQbit = !qbit && qbitUrl && qbitApiKey
             ? createQbitClient({
                 baseUrl: qbitUrl,
-                username: process.env.TORLINK_QBIT_USERNAME || "admin",
-                password: qbitApiKey,
+                apiKey: qbitApiKey,
                 category,
                 savePath,
                 fetch: options.qbitFetch,

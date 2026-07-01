@@ -1,7 +1,8 @@
 export interface QbitOptions {
   baseUrl: string;
-  username: string;
-  password: string;
+  username?: string;
+  password?: string;
+  apiKey?: string;
   category?: string;
   savePath?: string;
   fetch?: typeof fetch;

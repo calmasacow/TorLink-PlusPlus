@@ -1,19 +1,37 @@
 import type { QbitOptions, QbitClient } from "./types";
 
 function normalizeUrl(url: string): string {
-  return url.endsWith("/") ? url.slice(0, -1) : url;
+  return url
+    .trim()
+    .replace(/\/+$/u, "")
+    .replace(/\/api\/v2$/iu, "");
 }
 
 export function createQbitClient(opts: QbitOptions): QbitClient {
   const baseUrl = normalizeUrl(opts.baseUrl);
   const fetchImpl = opts.fetch ?? globalThis.fetch;
+  const apiKeyHeaders = opts.apiKey
+    ? {
+        "X-Api-Key": opts.apiKey,
+        "Authorization": `Bearer ${opts.apiKey}`,
+      }
+    : undefined;
+
+  async function testApiKeyMode(): Promise<{ ok: boolean; status?: number }> {
+    const res = await fetchImpl(`${baseUrl}/api/v2/app/version`, {
+      method: "GET",
+      headers: apiKeyHeaders,
+    });
+    return { ok: res.ok, status: res.status };
+  }
 
   async function login(): Promise<{ ok: boolean; cookie?: string; status?: number }> {
+    if (!opts.username || !opts.password) return { ok: false, status: 403 };
     const url = `${baseUrl}/api/v2/auth/login`;
-    const body = new URLSearchParams({
-      username: opts.username,
-      password: opts.password,
-    });
+    const username = opts.username;
+    const password = opts.password;
+    if (!username || !password) return { ok: false, status: 403 };
+    const body = new URLSearchParams({ username, password });
 
     const res = await fetchImpl(url, {
       method: "POST",
@@ -33,6 +51,18 @@ export function createQbitClient(opts: QbitOptions): QbitClient {
   return {
     async test() {
       try {
+        if (opts.apiKey) {
+          const { ok, status } = await testApiKeyMode();
+          if (!ok) {
+            return {
+              ok: false,
+              error: "qBittorrent connection test failed",
+              status: status ?? 403,
+            };
+          }
+          return { ok: true };
+        }
+
         const { ok, status } = await login();
         if (!ok) {
           return { 
@@ -60,6 +90,29 @@ export function createQbitClient(opts: QbitOptions): QbitClient {
       }
 
       try {
+        if (opts.apiKey) {
+          const url = `${baseUrl}/api/v2/torrents/add`;
+          const params = new URLSearchParams({ urls: magnet });
+          if (category) params.set("category", category);
+          if (savePath) params.set("savepath", savePath);
+          const res = await fetchImpl(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              ...apiKeyHeaders,
+            },
+            body: params.toString(),
+          });
+          if (!res.ok) {
+            return {
+              ok: false,
+              error: "Failed to add torrent",
+              status: res.status,
+            };
+          }
+          return { ok: true };
+        }
+
         const { ok, cookie } = await login();
         if (!ok) {
           return { ok: false, error: "qBittorrent login failed", status: 403 };

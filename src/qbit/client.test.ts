@@ -22,6 +22,63 @@ describe("qBittorrent client", () => {
     expect(baseUrl.endsWith("/")).toBe(false);
   });
 
+
+  it("strips a pasted /api/v2 suffix from the qBittorrent URL", async () => {
+    mockFetch.mockResolvedValue(new Response("Ok.", { status: 200 }));
+    const client = createQbitClient({
+      baseUrl: `${baseUrl}/api/v2/`,
+      username,
+      password,
+      fetch: mockFetch,
+    });
+
+    await expect(client.test()).resolves.toEqual({ ok: true });
+
+    expect(mockFetch).toHaveBeenCalledWith(`${baseUrl}/api/v2/auth/login`, expect.any(Object));
+  });
+
+  it("uses API-key mode without qBittorrent username/password login", async () => {
+    mockFetch.mockResolvedValue(new Response("Ok.", { status: 200 }));
+    const client = createQbitClient({
+      baseUrl,
+      apiKey: "request-api-key",
+      fetch: mockFetch,
+    });
+
+    await expect(client.test()).resolves.toEqual({ ok: true });
+
+    expect(mockFetch).toHaveBeenCalledWith(`${baseUrl}/api/v2/app/version`, {
+      method: "GET",
+      headers: {
+        "X-Api-Key": "request-api-key",
+        "Authorization": "Bearer request-api-key",
+      },
+    });
+    expect(mockFetch).not.toHaveBeenCalledWith(`${baseUrl}/api/v2/auth/login`, expect.any(Object));
+  });
+
+  it("adds a torrent in API-key mode without qBittorrent login", async () => {
+    mockFetch.mockResolvedValue(new Response("Ok.", { status: 200 }));
+    const magnet = "magnet:?xt=urn:btih:abc123";
+    const client = createQbitClient({
+      baseUrl,
+      apiKey: "request-api-key",
+      fetch: mockFetch,
+    });
+
+    await expect(client.add({ magnet })).resolves.toEqual({ ok: true });
+
+    expect(mockFetch).toHaveBeenCalledWith(`${baseUrl}/api/v2/torrents/add`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-Api-Key": "request-api-key",
+        "Authorization": "Bearer request-api-key",
+      },
+      body: `urls=${encodeURIComponent(magnet)}`,
+    });
+  });
+
   it("rejects login with bad credentials", async () => {
     mockFetch.mockResolvedValue(new Response("Fails.", { status: 403 }));
     const client = createQbitClient({ baseUrl, username, password, fetch: mockFetch });

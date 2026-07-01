@@ -382,6 +382,30 @@ describe("qBittorrent API", () => {
     });
   });
 
+  it("tests request-provided qBittorrent URL and API key", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(new Response("v5.0.0", { status: 200 }));
+    await startTestServer({ qbitFetch: mockFetch });
+
+    const res = await fetch(`${baseUrl()}/api/qbit/test`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        qbitUrl: "http://localhost:8080/api/v2/",
+        qbitApiKey: "request-api-key",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v2/app/version",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({ "X-Api-Key": "request-api-key" }),
+      }),
+    );
+  });
+
   it("tests qBittorrent connection", async () => {
     mockQbit.test.mockResolvedValueOnce({ ok: true });
     await startTestServer({ 
@@ -450,10 +474,10 @@ describe("qBittorrent API", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
     expect(mockFetch).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v2/auth/login",
+      "http://localhost:8080/api/v2/torrents/add",
       expect.objectContaining({
         method: "POST",
-        body: "username=admin&password=request-password",
+        headers: expect.objectContaining({ "X-Api-Key": "request-password" }),
       }),
     );
   });
