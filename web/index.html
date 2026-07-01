@@ -164,14 +164,15 @@
         </button>
       </div>
       <div class="bg-black border border-[#575657] rounded-md p-5 max-w-2xl">
-        <label class="block text-xs text-[#A38DF2] mb-2" for="settings-api-key">Torlink API Key</label>
+        <label class="block text-xs text-[#A38DF2] mb-2" for="settings-api-key">Torlink API Key for external apps</label>
         <div class="flex gap-2">
-          <input id="settings-api-key" type="password" placeholder="Paste API key for non-trusted browsers"
-                 class="flex-1 bg-black border border-[#766BBF] focus:border-[#A38DF2] transition-colors text-sm px-4 py-2 rounded-md outline-none placeholder:text-[#575657]">
-          <button onclick="saveSettingsApiKey()" class="px-4 py-2 bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black rounded-md text-xs">Save</button>
+          <input id="settings-api-key" type="text" readonly value="please generate key"
+                 class="flex-1 bg-black border border-[#766BBF] focus:border-[#A38DF2] transition-colors text-sm px-4 py-2 rounded-md outline-none font-mono text-[#A38DF2]">
+          <button onclick="generateSettingsApiKey()" class="px-4 py-2 bg-[#7B62D9] hover:bg-[#A38DF2] hover:text-black rounded-md text-xs">Generate</button>
+          <button onclick="copySettingsApiKey()" class="px-4 py-2 bg-[#4EBF5F] text-black hover:bg-[#A38DF2] rounded-md text-xs">Copy</button>
           <button onclick="clearSettingsApiKey()" class="px-4 py-2 border border-[#575657] hover:bg-[#7B62D9]/20 rounded-md text-xs">Clear</button>
         </div>
-        <div id="settings-api-key-status" class="text-xs text-[#575657] mt-2">API key not set locally.</div>
+        <div id="settings-api-key-status" class="text-xs text-[#575657] mt-2">Generate a key, copy it, then put the same key in Torlink and Radarr/Sonarr. The browser UI uses trusted same-origin mode, not this key.</div>
         <div class="mt-6 border-t border-[#575657] pt-4">
           <div class="text-xs text-[#A38DF2] mb-1">Built-in downloader path</div>
           <div id="settings-download-dir" class="font-mono text-xs text-[#4EBF5F]">/downloads</div>
@@ -186,45 +187,71 @@
 
   <script>
     const API_BASE = window.location.origin;
+    const API_KEY_PRESENT_FLAG = 'torlink_generated_api_key_present';
     let queueRefreshTimer = null;
-    
-    function getApiKey() {
-      return localStorage.getItem('torlink_api_key') || '';
+    let queueErrorVisible = false;
+    let transientGeneratedApiKey = '';
+
+    function hasGeneratedApiKey() {
+      return localStorage.getItem(API_KEY_PRESENT_FLAG) === '1';
     }
-    
-    function setApiKey(key) {
-      localStorage.setItem('torlink_api_key', key);
-      updateApiKeyStatus();
+
+    function randomApiKey() {
+      const bytes = new Uint8Array(32);
+      crypto.getRandomValues(bytes);
+      return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
     }
-    
+
     function updateApiKeyStatus() {
-      const key = getApiKey();
       const input = document.getElementById('settings-api-key');
       const status = document.getElementById('settings-api-key-status');
-      if (input && document.activeElement !== input) input.value = key;
-      if (!status) return;
-      if (key) {
-        status.textContent = `API key saved locally (${key.substring(0, 8)}...).`;
+      if (!input || !status) return;
+      if (transientGeneratedApiKey) {
+        input.value = transientGeneratedApiKey;
+        status.textContent = 'Generated key is visible now. Copy it before leaving Settings; it will be hidden afterward.';
         status.style.color = '#4EBF5F';
+      } else if (hasGeneratedApiKey()) {
+        input.value = '********';
+        status.textContent = 'A key was generated earlier, but Torlink does not keep it visible. Generate a new key if you still need to copy it.';
+        status.style.color = '#A38DF2';
       } else {
-        status.textContent = 'API key not set locally.';
+        input.value = 'please generate key';
+        status.textContent = 'Generate a key, copy it, then put the same key in Torlink and Radarr/Sonarr. The browser UI uses trusted same-origin mode, not this key.';
         status.style.color = '#575657';
       }
     }
 
-    function saveSettingsApiKey() {
-      setApiKey(document.getElementById('settings-api-key').value.trim());
-      showToast('API key saved');
+    function generateSettingsApiKey() {
+      transientGeneratedApiKey = randomApiKey();
+      localStorage.setItem(API_KEY_PRESENT_FLAG, '1');
+      updateApiKeyStatus();
+      showToast('API key generated — copy it now');
+    }
+
+    async function copySettingsApiKey() {
+      if (!transientGeneratedApiKey) {
+        showToast('Generate a new key to copy it', 'error');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(transientGeneratedApiKey);
+        showToast('API key copied');
+      } catch {
+        showToast('Failed to copy API key', 'error');
+      }
     }
 
     function clearSettingsApiKey() {
-      setApiKey('');
+      transientGeneratedApiKey = '';
+      localStorage.removeItem(API_KEY_PRESENT_FLAG);
+      updateApiKeyStatus();
       showToast('API key cleared', 'info');
     }
 
     function showSearchView() {
       clearInterval(queueRefreshTimer);
       queueRefreshTimer = null;
+      transientGeneratedApiKey = '';
       document.getElementById('search-controls').classList.remove('hidden');
       document.getElementById('search-view').classList.remove('hidden');
       document.getElementById('queue-view').classList.add('hidden');
@@ -232,6 +259,7 @@
     }
 
     function showQueueView() {
+      transientGeneratedApiKey = '';
       document.getElementById('search-controls').classList.add('hidden');
       document.getElementById('search-view').classList.add('hidden');
       document.getElementById('settings-view').classList.add('hidden');
@@ -317,15 +345,10 @@
           limit: '100'
         });
         
-        const headers = {};
-        const apiKey = getApiKey();
-        if (apiKey) headers['X-Api-Key'] = apiKey;
-        
-        const res = await fetch(`${API_BASE}/api?${params}`, { headers });
+        const res = await fetch(`${API_BASE}/api?${params}`);
         
         if (res.status === 401) {
-          showApiKeyModal();
-          throw new Error('Unauthorized: click Set API Key and paste your Torlink API key, then search again.');
+          throw new Error('Unauthorized: enable trusted Web UI mode or use the API key from an external app.');
         }
 
         if (!res.ok) {
@@ -462,8 +485,6 @@
         return;
       }
       const headers = { 'Content-Type': 'application/json' };
-      const apiKey = getApiKey();
-      if (apiKey) headers['X-Api-Key'] = apiKey;
       try {
         const res = await fetch(`${API_BASE}/api/downloads/add`, {
           method: 'POST',
@@ -479,27 +500,25 @@
     }
 
     async function refreshQueueSettings() {
-      const headers = {};
-      const apiKey = getApiKey();
-      if (apiKey) headers['X-Api-Key'] = apiKey;
       try {
-        const res = await fetch(`${API_BASE}/api/downloads`, { headers });
+        const res = await fetch(`${API_BASE}/api/downloads`);
         const data = await res.json();
         if (res.ok && data.downloadDir) document.getElementById('settings-download-dir').textContent = data.downloadDir;
       } catch {}
     }
 
     async function refreshQueue() {
-      const headers = {};
-      const apiKey = getApiKey();
-      if (apiKey) headers['X-Api-Key'] = apiKey;
       try {
-        const res = await fetch(`${API_BASE}/api/downloads`, { headers });
+        const res = await fetch(`${API_BASE}/api/downloads`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to load queue');
         renderQueue(data.items || []);
+        queueErrorVisible = false;
       } catch (err) {
-        showToast(err.message || 'Failed to load queue', 'error');
+        if (!queueErrorVisible) {
+          queueErrorVisible = true;
+          showToast(err.message || 'Failed to load queue', 'error');
+        }
       }
     }
 
@@ -534,11 +553,8 @@
     }
 
     async function downloadAction(id, action) {
-      const headers = {};
-      const apiKey = getApiKey();
-      if (apiKey) headers['X-Api-Key'] = apiKey;
       try {
-        const res = await fetch(`${API_BASE}/api/downloads/${encodeURIComponent(id)}/${action}`, { method: 'POST', headers });
+        const res = await fetch(`${API_BASE}/api/downloads/${encodeURIComponent(id)}/${action}`, { method: 'POST' });
         if (!res.ok) throw new Error('Action failed');
         refreshQueue();
       } catch (err) {
@@ -552,9 +568,7 @@
         return;
       }
       
-      const apiKey = getApiKey();
       const headers = { 'Content-Type': 'application/json' };
-      if (apiKey) headers['X-Api-Key'] = apiKey;
       
       try {
         const res = await fetch(`${API_BASE}/api/qbit/add`, {
