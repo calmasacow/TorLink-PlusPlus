@@ -1,85 +1,127 @@
 <p align="center">
-  <img src="preview/splash.svg" alt="torlink, curated torrents straight from your terminal" style="max-width: 832px; width: 100%; height: auto;">
+  <img src="web/torlink-plusplus-logo.png" alt="TorLink++" width="311" height="62">
 </p>
 
-Finding a torrent these days sucks. One site is a minefield of fake download buttons. Another hides the real link under a popup that spawns two more tabs. And after all that, half the results are dead, zero seeders.
+# TorLink++
 
-torlink is a torrent finder that lives in your terminal, with zero setup and nothing to configure. One search checks a short, curated list of reputable sources at once, and whatever you pick downloads straight to your computer. The files are yours, saved to your downloads folder.
+TorLink++ is a self-hosted Torznab + torrent-download gateway built on top of the original [Torlink](https://github.com/baairon/torlink) terminal torrent finder/downloader.
 
-## Get started
+The original Torlink project, its terminal TUI, curated search experience, source integrations, and downloader foundation were created by **bairon / baairon**. Full credit for that original work belongs to the original author. This repository is a fork that adds a LAN-friendly web layer and automation integrations around that foundation.
 
-1. **Install Node** (from [nodejs.org](https://nodejs.org)), it's all torlink needs.
-2. **Open your terminal.**
-3. **Start it:**
+## What TorLink++ adds
 
-   ```sh
-   npx torlnk
-   ```
+TorLink++ keeps the native Torlink terminal experience and adds two major capabilities:
 
-That's the only thing you'll type. torlink opens straight to a search bar: search for what you want, paste in a magnet link, or just press Enter on an empty box to browse the curated library. From there it's all keypresses, nothing to memorize, and `?` brings up the full list anytime.
+1. **Torznab indexer API for automation apps**
+   - Exposes a Torznab-compatible endpoint for Radarr/Sonarr-style indexer integrations.
+   - Supports `/api?t=caps` and search responses that automation apps can validate.
+   - Uses a configurable API key for Radarr/Sonarr and other clients.
 
-## Finding something
+2. **Web interface for LAN use**
+   - Search from a browser.
+   - Queue downloads into the built-in Torlink downloader.
+   - Send magnets to qBittorrent when configured.
+   - View the built-in downloader queue.
+   - Open the real native Torlink TUI embedded in the browser through an xterm.js + PTY bridge.
 
-Type what you're looking for and press Enter. Results stream in from every source as they answer, tagged with size and how many people are sharing each one, so you can see what'll come down fast. Arrow to what you want and press `d` to save it.
+## Why this exists
 
-<p align="center">
-  <img src="preview/browse.svg" alt="torlink's browse view: the sidebar, the search bar, and merged results from every source" style="max-width: 832px; width: 100%; height: auto;">
-</p>
+The original Torlink is a polished terminal-native torrent finder/downloader. TorLink++ is for homelab users who want that same curated search/downloader base to also work with:
 
-## Your downloads
+- Radarr
+- Sonarr
+- browser-based searching
+- a LAN-hosted web UI
+- qBittorrent handoff
+- Docker/Unraid deployments
 
-Active downloads sit up top with their progress, speed, and time left; when one finishes it drops into Recently downloaded just below, so the list stays tidy. Everything's still there when you come back, and anything interrupted picks up where it left off.
+## Quick start with Docker Compose
 
-Downloads run in the background while you keep searching, so you can queue up as many as you want. They save to your downloads folder, and the Downloads pane keeps tabs on each one. When something finishes it keeps seeding automatically so the next person can find it too, and the Seeding tab lets you pause or stop that anytime.
+Copy the example compose file and set your private overrides:
 
-<p align="center">
-  <img src="preview/downloads.svg" alt="torlink's Downloads pane: live progress on top, recently downloaded below" style="max-width: 832px; width: 100%; height: auto;">
-</p>
+```yaml
+services:
+  torlink:
+    image: torlink:latest
+    ports:
+      - "19117:9117"
+    environment:
+      TORLINK_API_KEY: "replace-with-a-long-random-api-key"
+      TORLINK_WEBUI_TRUSTED: "true"
+      TORLINK_DOWNLOAD_DIR: "/downloads"
+    volumes:
+      - /path/on/host/torlink-downloads:/downloads
+```
 
-## What it searches
+Then open:
 
-A short, hand-picked list of trusted sources:
+```text
+http://YOUR_SERVER:19117/
+```
 
-| Category | Sources |
-| --- | --- |
-| Games | FitGirl |
-| Movies | YTS, The Pirate Bay, 1337x |
-| TV | EZTV, SolidTorrents, The Pirate Bay, 1337x |
-| Anime | Nyaa, SubsPlease |
+For Radarr/Sonarr, use the Torznab URL:
 
-Games are the only category that can run code, so they come from FitGirl alone, a repacker with a long, trusted track record; everything else is plain video and subtitles. If a source is down, the search carries on without it, and torlink tells you which one is offline.
+```text
+http://YOUR_SERVER:19117/api?apikey=YOUR_API_KEY
+```
 
-## Contributing
+## Download path
 
-To run or work on torlink locally:
+Inside the container, TorLink++ writes built-in downloader files to:
 
-1. Clone the repository and open the folder.
-2. Install dependencies:
-   ```sh
-   npm install
-   ```
-3. Run the development version:
-   ```sh
-   npm run dev
-   ```
-   Or build it and run the bundled version:
-   ```sh
-   npm run build
-   npx torlnk
-   ```
+```text
+/downloads
+```
 
-Before opening a PR, skim [CONTRIBUTING.md](CONTRIBUTING.md); it lays out the bar with examples from real merged PRs.
+Map that container path to the host folder you want. For example, on Unraid:
 
-## Privacy
+```text
+/mnt/zfs-array/downloads/torlink:/downloads
+```
 
-Your files stay on your disk, and nothing routes through a central server; torlink only talks to the torrent network directly. Once a download finishes it keeps seeding by default, sharing it back so the next person can find it just as easily. The network only works because people pass things along, and even a few minutes makes a real difference. If you'd rather not, opt out anytime: open the Seeding tab, press `p` to pause or stop any item, and press it again to pick it back up. Always your call.
+The native embedded TUI and the browser Web UI both use the same `/downloads` target when `TORLINK_DOWNLOAD_DIR=/downloads` is set.
 
-## Star History
+## Web UI modes
 
-<a href="https://www.star-history.com/?repos=baairon%2Ftorlink&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=baairon/torlink&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=baairon/torlink&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=baairon/torlink&type=date&legend=top-left" />
- </picture>
-</a>
+The header includes quick navigation between:
+
+- **Web GUI**: browser search, queue, settings, and qBittorrent actions.
+- **Web TUI**: the actual native Torlink terminal UI embedded in the browser using xterm.js and a server-side PTY.
+- **Queue**: active built-in downloader queue, with the Queue button toggling back to Search.
+
+## Local development
+
+Requires Node 22+ and pnpm.
+
+```sh
+pnpm install --config.dangerously-allow-all-builds=true
+pnpm run typecheck
+pnpm run test
+pnpm run build
+```
+
+Run the terminal app:
+
+```sh
+pnpm run dev
+```
+
+Run the web/Torznab server after building:
+
+```sh
+pnpm run build
+node dist/index.js serve
+```
+
+## Attribution
+
+TorLink++ is a fork of the original Torlink project by **bairon / baairon**:
+
+- Original repository: https://github.com/baairon/torlink
+- Original author: bairon.dev / hi@bairon.dev
+
+The original project deserves the credit for the native TUI, core torrent search/downloader concept, and curated source experience. TorLink++ extends that work with a web interface, Torznab API, qBittorrent handoff, Docker/Unraid-oriented deployment, and embedded browser TUI support.
+
+## License
+
+MIT, following the original Torlink project license.

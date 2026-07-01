@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Torlink</title>
+  <title>TorLink++</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">
@@ -36,11 +36,12 @@
     .tui-shell {
       min-height: calc(100vh - 89px);
       background: #0c0c0c;
-      padding: 1rem 2rem 2rem;
+      padding: 1rem 2rem 3.5rem;
     }
     .tui-terminal-window {
-      height: calc(100vh - 124px);
-      min-height: 520px;
+      height: calc(100vh - 176px);
+      min-height: 420px;
+      margin-bottom: 2.5rem;
       background: #0c0c0c;
       border: 1px solid #575657;
       border-radius: 6px;
@@ -56,6 +57,13 @@
     #tui-terminal .xterm {
       height: 100%;
     }
+    #tui-terminal .xterm-viewport {
+      overflow-y: hidden !important;
+      scrollbar-width: none;
+    }
+    #tui-terminal .xterm-viewport::-webkit-scrollbar {
+      display: none;
+    }
   </style>
 </head>
 <body class="text-white">
@@ -63,7 +71,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between px-8 py-5 border-b border-[#575657]">
       <div class="flex items-center gap-x-4">
-        <img src="/torlink-logo.jpg" alt="Torlink" class="h-12 w-auto object-contain" width="242" height="64">
+        <img src="/torlink-plusplus-logo.png" alt="TorLink++" class="h-12 w-auto object-contain" width="311" height="62">
         <div class="hidden sm:block text-[11px] text-[#A38DF2] tracking-wide">Torznab + qBittorrent</div>
       </div>
       
@@ -75,9 +83,9 @@
           <div class="w-2 h-2 bg-[#4EBF5F] rounded-full animate-pulse"></div>
           <span class="text-[#4EBF5F] text-xs font-medium">CONNECTED</span>
         </div>
-        <button onclick="showQueueView()" class="cursor-pointer flex items-center gap-x-2 text-xs px-3 py-1.5 rounded-md border border-[#575657] hover:bg-[#7B62D9]/20">
-          <i class="fa-solid fa-list text-[#A38DF2]"></i>
-          <span>Queue</span>
+        <button id="queue-toggle-button" onclick="toggleQueueView()" class="cursor-pointer flex items-center gap-x-2 text-xs px-3 py-1.5 rounded-md border border-[#575657] hover:bg-[#7B62D9]/20" title="Show Queue">
+          <i id="queue-toggle-icon" class="fa-solid fa-list text-[#A38DF2]"></i>
+          <span id="queue-toggle-label">Queue</span>
         </button>
         <button onclick="showSettingsView()" class="cursor-pointer flex items-center gap-x-2 text-xs px-3 py-1.5 rounded-md border border-[#575657] hover:bg-[#7B62D9]/20" title="Settings">
           <i class="fa-solid fa-gear text-[#A38DF2]"></i>
@@ -89,7 +97,7 @@
     <!-- Web TUI -->
     <div id="web-tui-view" class="hidden tui-shell">
       <div class="tui-terminal-window">
-        <div id="tui-terminal" aria-label="Torlink terminal TUI"></div>
+        <div id="tui-terminal" aria-label="TorLink++ terminal TUI"></div>
       </div>
     </div>
 
@@ -160,9 +168,6 @@
     <div id="queue-view" class="hidden px-8 pt-8">
       <div class="flex items-center justify-between mb-3 px-1">
         <div class="text-sm text-[#A38DF2]"><span id="queue-count">0</span> queued downloads</div>
-        <button onclick="showSearchView()" class="px-3 py-1.5 text-xs rounded-md border border-[#575657] hover:bg-[#7B62D9]/20">
-          <i class="fa-solid fa-arrow-left"></i> Search
-        </button>
       </div>
       <div class="bg-black border border-[#575657] rounded-md overflow-hidden">
         <table class="w-full table-fixed">
@@ -201,7 +206,7 @@
         </button>
       </div>
       <div class="bg-black border border-[#575657] rounded-md p-5 max-w-2xl">
-        <label class="block text-xs text-[#A38DF2] mb-2" for="settings-api-key">Torlink API Key for external apps</label>
+        <label class="block text-xs text-[#A38DF2] mb-2" for="settings-api-key">TorLink++ API Key for external apps</label>
         <div class="flex gap-2">
           <input id="settings-api-key" type="text" readonly value="please generate key"
                  class="flex-1 bg-black border border-[#766BBF] focus:border-[#A38DF2] transition-colors text-sm px-4 py-2 rounded-md outline-none font-mono text-[#A38DF2]">
@@ -222,7 +227,7 @@
               <button onclick="testQbitSettings()" class="px-4 py-2 bg-[#4EBF5F] text-black hover:bg-[#A38DF2] rounded-md text-xs">Test qBittorrent</button>
               <button onclick="clearQbitSettings()" class="px-4 py-2 border border-[#575657] hover:bg-[#7B62D9]/20 rounded-md text-xs">Clear qBittorrent</button>
             </div>
-            <div id="settings-qbit-status" class="text-xs text-[#575657]">If URL + API key are set here, QBT will use them for that request. If blank, Torlink uses private server-side compose settings.</div>
+            <div id="settings-qbit-status" class="text-xs text-[#575657]">If URL + API key are set here, QBT will use them for that request. If blank, TorLink++ uses private server-side compose settings.</div>
           </div>
         </div>
         <div class="mt-6 border-t border-[#575657] pt-4">
@@ -354,7 +359,7 @@
         status.textContent = `qBittorrent is configured for ${url}. API key: ********`;
         status.style.color = '#4EBF5F';
       } else {
-        status.textContent = 'If URL + API key are set here, QBT will use them for that request. If blank, Torlink uses private server-side compose settings.';
+        status.textContent = 'If URL + API key are set here, QBT will use them for that request. If blank, TorLink++ uses private server-side compose settings.';
         status.style.color = '#575657';
       }
     }
@@ -424,6 +429,24 @@
       }
     }
 
+    function setQueueMode(active) {
+      const button = document.getElementById('queue-toggle-button');
+      const icon = document.getElementById('queue-toggle-icon');
+      const label = document.getElementById('queue-toggle-label');
+      if (!button || !icon || !label) return;
+      if (active) {
+        icon.className = 'fa-solid fa-arrow-left text-[#A38DF2]';
+        label.textContent = 'Search';
+        button.title = 'Back to Search';
+        button.classList.add('border-[#A38DF2]');
+      } else {
+        icon.className = 'fa-solid fa-list text-[#A38DF2]';
+        label.textContent = 'Queue';
+        button.title = 'Show Queue';
+        button.classList.remove('border-[#A38DF2]');
+      }
+    }
+
     function hideAllViews() {
       document.getElementById('search-controls').classList.add('hidden');
       document.getElementById('search-view').classList.add('hidden');
@@ -438,6 +461,7 @@
       transientGeneratedApiKey = '';
       hideAllViews();
       setTuiMode(false);
+      setQueueMode(false);
       document.getElementById('search-controls').classList.remove('hidden');
       document.getElementById('search-view').classList.remove('hidden');
     }
@@ -448,6 +472,7 @@
       transientGeneratedApiKey = '';
       hideAllViews();
       setTuiMode(true);
+      setQueueMode(false);
       document.getElementById('web-tui-view').classList.remove('hidden');
       connectTuiTerminal();
     }
@@ -458,10 +483,17 @@
       else showTuiView();
     }
 
+    function toggleQueueView() {
+      const queueVisible = !document.getElementById('queue-view').classList.contains('hidden');
+      if (queueVisible) showSearchView();
+      else showQueueView();
+    }
+
     function showQueueView() {
       transientGeneratedApiKey = '';
       hideAllViews();
       setTuiMode(false);
+      setQueueMode(true);
       document.getElementById('queue-view').classList.remove('hidden');
       refreshQueue();
       clearInterval(queueRefreshTimer);
@@ -473,6 +505,7 @@
       queueRefreshTimer = null;
       hideAllViews();
       setTuiMode(false);
+      setQueueMode(false);
       document.getElementById('settings-view').classList.remove('hidden');
       updateApiKeyStatus();
       loadQbitSettings();
@@ -605,7 +638,7 @@
       if (tuiSocket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(tuiSocket.readyState)) return;
 
       tuiTerminal.clear();
-      tuiTerminal.writeln('Connecting to Torlink TUI...');
+      tuiTerminal.writeln('Connecting to TorLink++ TUI...');
       tuiSocket = new WebSocket(buildTuiWsUrl());
       tuiSocket.binaryType = 'arraybuffer';
       tuiSocket.onopen = () => {
@@ -619,8 +652,8 @@
           tuiTerminal.write(event.data);
         }
       };
-      tuiSocket.onerror = () => tuiTerminal.writeln('\r\n\x1b[31m[Torlink TUI websocket error]\x1b[0m');
-      tuiSocket.onclose = () => tuiTerminal.writeln('\r\n\x1b[90m[Torlink TUI disconnected — click Web TUI to reconnect]\x1b[0m');
+      tuiSocket.onerror = () => tuiTerminal.writeln('\r\n\x1b[31m[TorLink++ TUI websocket error]\x1b[0m');
+      tuiSocket.onclose = () => tuiTerminal.writeln('\r\n\x1b[90m[TorLink++ TUI disconnected — click Web TUI to reconnect]\x1b[0m');
 
       if (!tuiResizeHandler) {
         tuiResizeHandler = () => {

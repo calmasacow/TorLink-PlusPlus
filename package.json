@@ -1,7 +1,7 @@
 {
-  "name": "torlnk",
+  "name": "torlink-plusplus",
   "version": "1.1.1",
-  "description": "A sleek, zero-setup torrent finder and downloader that lives right in your terminal.",
+  "description": "TorLink++: Torlink with a Torznab/Radarr/Sonarr web gateway and embedded browser TUI.",
   "type": "module",
   "packageManager": "pnpm@10.34.4",
   "bin": {
@@ -43,15 +43,15 @@
     "zero-setup",
     "fitgirl"
   ],
-  "author": "bairon",
+  "author": "bairon (original Torlink); TorLink++ fork by calmasacow",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/baairon/torlink.git"
+    "url": "git+https://github.com/calmasacow/TorLink-PlusPlus.git"
   },
-  "homepage": "https://github.com/baairon/torlink#readme",
+  "homepage": "https://github.com/calmasacow/TorLink-PlusPlus#readme",
   "bugs": {
-    "url": "https://github.com/baairon/torlink/issues"
+    "url": "https://github.com/calmasacow/TorLink-PlusPlus/issues"
   },
   "publishConfig": {
     "access": "public"

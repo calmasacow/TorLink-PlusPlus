@@ -573,7 +573,7 @@ describe("API server", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/html");
-    expect(text).toContain("<title>Torlink</title>");
+    expect(text).toContain("<title>TorLink++</title>");
   });
 
   it("returns JSON ok for /health", async () => {
