@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="web/torlink-plusplus-logo.png" alt="TorLink++" width="311" height="62">
+  <img src="web/torlink-plusplus-logo_trans.png" alt="TorLink++" width="311" height="62">
 </p>
 
 # TorLink++
