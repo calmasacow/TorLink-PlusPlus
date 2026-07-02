@@ -8,7 +8,7 @@ TorLink++ is a self-hosted Torznab + torrent-download gateway built on top of th
 
 The original Torlink project, its terminal TUI, curated search experience, source integrations, and downloader foundation were created by **bairon / baairon**. Full credit for that original work belongs to the original author. This repository is a fork that adds a LAN-friendly web layer and automation integrations around that foundation.
 <p align="center">
-  <img src="web/001_Screenshot.jpg" alt="TorLink++" width="600">
+  <img src="web/001_Screenshot.jpg" alt="TorLink++" width="80%">
 </p>
 
 ## What TorLink++ adds
