@@ -19,6 +19,9 @@ TorLink++ keeps the native Torlink terminal experience and adds two major capabi
    - Exposes a Torznab-compatible endpoint for Radarr/Sonarr-style indexer integrations.
    - Supports `/api?t=caps` and search responses that automation apps can validate.
    - Uses a configurable API key for Radarr/Sonarr and other clients.
+<p align="center">
+  <img src="web/005_Screenshot.jpg" alt="TorLink++" width="80%">
+</p>
 
 2. **Web interface for LAN use**
    - Search from a browser.
@@ -26,7 +29,10 @@ TorLink++ keeps the native Torlink terminal experience and adds two major capabi
    - Send magnets to qBittorrent when configured.
    - View the built-in downloader queue.
    - Open the real native Torlink TUI embedded in the browser through an xterm.js + PTY bridge.
-
+<p align="center">
+  <img src="web/002_Screenshot.jpg" alt="TorLink++" width="80%">
+  <img src="web/003_Screenshot.jpg" alt="TorLink++" width="80%">
+</p>
 ## Why this exists
 
 The original Torlink is a polished terminal-native torrent finder/downloader. TorLink++ is for homelab users who want that same curated search/downloader base to also work with:
@@ -37,6 +43,11 @@ The original Torlink is a polished terminal-native torrent finder/downloader. To
 - a LAN-hosted web UI
 - qBittorrent handoff
 - Docker/Unraid deployments
+
+Best of all the FULL native TUI is avalible as well via a embedded Terminal. Accessable from anywhere on your network.
+<p align="center">
+  <img src="web/004_Screenshot.jpg" alt="TorLink++" width="80%">
+</p>
 
 ## Quick start with Docker Compose
 
